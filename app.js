@@ -3,7 +3,7 @@
 // ============================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // FIREBASE CONFIG
 const firebaseConfig = {
@@ -118,15 +118,140 @@ document.getElementById('btn-create-room').addEventListener('click', function() 
 
 
 // ============================================
+// HELPER - Generate random 6 digit room code
+// ============================================
+function generateRoomCode() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+
+// ============================================
+// CREATE ROOM BUTTON
+// ============================================
+document.getElementById('btn-create-room').addEventListener('click', async function() {
+  var user = auth.currentUser;
+  if (!user) return;
+
+  var roomCode = generateRoomCode();
+
+  try {
+    // Save room to Firestore
+    await setDoc(doc(db, 'rooms', roomCode), {
+      code: roomCode,
+      host: user.email,
+      hostId: user.uid,
+      status: 'waiting',
+      createdAt: new Date(),
+      players: {
+        [user.uid]: {
+          email: user.email,
+          joinedAt: new Date()
+        }
+      }
+    });
+
+    // Show the room screen
+    document.getElementById('room-code-display').textContent = roomCode;
+    showScreen('screen-room');
+
+    // Start listening for players
+    listenToRoom(roomCode);
+
+  } catch (error) {
+    alert('Error creating room: ' + error.message);
+  }
+});
+
+
+// ============================================
 // JOIN ROOM BUTTON
 // ============================================
-document.getElementById('btn-join-room').addEventListener('click', function() {
-  var code = document.getElementById('join-code').value;
+document.getElementById('btn-join-room').addEventListener('click', async function() {
+  var user = auth.currentUser;
+  if (!user) return;
+
+  var code = document.getElementById('join-code').value.toUpperCase().trim();
 
   if (code === '') {
     alert('⚠️ Please enter a room code.');
     return;
   }
 
-  alert('🔗 Join Room — coming in next step!');
+  try {
+    var roomRef = doc(db, 'rooms', code);
+    var roomSnap = await getDoc(roomRef);
+
+    // Check if room exists
+    if (!roomSnap.exists()) {
+      alert('❌ Room not found! Check the code and try again.');
+      return;
+    }
+
+    // Check if room is still open
+    if (roomSnap.data().status !== 'waiting') {
+      alert('⚠️ This room has already started!');
+      return;
+    }
+
+    // Add player to room
+    await updateDoc(roomRef, {
+      ['players.' + user.uid]: {
+        email: user.email,
+        joinedAt: new Date()
+      }
+    });
+
+    // Show room screen
+    document.getElementById('room-code-display').textContent = code;
+    showScreen('screen-room');
+
+    // Start listening for players
+    listenToRoom(code);
+
+  } catch (error) {
+    alert('Error joining room: ' + error.message);
+  }
+});
+
+
+// ============================================
+// LISTEN TO ROOM - Real time players list
+// ============================================
+function listenToRoom(roomCode) {
+  var roomRef = doc(db, 'rooms', roomCode);
+
+  onSnapshot(roomRef, function(snapshot) {
+    if (!snapshot.exists()) return;
+
+    var data = snapshot.data();
+    var players = data.players || {};
+    var playerList = document.getElementById('player-list');
+
+    // Clear current list
+    playerList.innerHTML = '<h3>👥 Players in Room:</h3>';
+
+    // Add each player
+    Object.values(players).forEach(function(player) {
+      var div = document.createElement('div');
+      div.className = 'player-item';
+      div.textContent = '🏏 ' + player.email;
+      playerList.appendChild(div);
+    });
+
+    // Show start button only for host
+    var currentUser = auth.currentUser;
+    if (currentUser && data.hostId === currentUser.uid) {
+      document.getElementById('btn-start-auction').style.display = 'block';
+    } else {
+      document.getElementById('btn-start-auction').style.display = 'none';
+    }
+  });
+}
+
+
+// ============================================
+// START AUCTION BUTTON
+// ============================================
+document.getElementById('btn-start-auction').addEventListener('click', function() {
+  alert('🏏 Auction Starting — coming in next step!');
 });
