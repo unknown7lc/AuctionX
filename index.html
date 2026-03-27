@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IPL Auction Game</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- SCREEN 1: Login -->
+  <div id="screen-login" class="screen active">
+    <div class="card">
+      <h1>🏏 IPL Auction</h1>
+      <p>Multiplayer Fantasy Game</p>
+      <input type="email" id="email" placeholder="Enter your email" />
+      <input type="password" id="password" placeholder="Enter password" />
+      <button id="btn-login">Login</button>
+      <button id="btn-register">Register</button>
+      <p id="auth-error" class="error"></p>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: Lobby -->
+  <div id="screen-lobby" class="screen">
+    <div class="card">
+      <h2>🏟️ Game Lobby</h2>
+      <p id="lobby-user">Logged in as: <strong></strong></p>
+      <button id="btn-create-room">➕ Create Room</button>
+      <hr/>
+      <input type="text" id="join-code" placeholder="Enter Room Code" />
+      <button id="btn-join-room">🔗 Join Room</button>
+      <button id="btn-logout">🚪 Logout</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: Auction Room -->
+  <div id="screen-room" class="screen">
+    <div class="card">
+      <h2>🎯 Auction Room</h2>
+      <p>Room Code: <strong id="room-code-display"></strong></p>
+      <div id="player-list"></div>
+      <button id="btn-start-auction">▶️ Start Auction</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+/* Reset & Base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #1a1a2e;
+  color: #eee;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Screen System - only .active screen is visible */
+.screen {
+  display: none;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* Card Box */
+.card {
+  background: #16213e;
+  border: 1px solid #0f3460;
+  border-radius: 16px;
+  padding: 40px 32px;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.card h1 {
+  font-size: 2rem;
+  color: #e94560;
+  margin-bottom: 6px;
+}
+
+.card h2 {
+  font-size: 1.5rem;
+  color: #e94560;
+  margin-bottom: 12px;
+}
+
+.card p {
+  color: #aaa;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+}
+
+/* Inputs */
+input {
+  width: 100%;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border: 1px solid #0f3460;
+  background: #0f3460;
+  color: #eee;
+  font-size: 1rem;
+  outline: none;
+}
+
+input::placeholder {
+  color: #888;
+}
+
+input:focus {
+  border-color: #e94560;
+}
+
+/* Buttons */
+button {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: none;
+  background: #e94560;
+  color: white;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: #c73652;
+}
+
+/* Secondary / Logout button */
+#btn-logout {
+  background: #333;
+}
+
+#btn-logout:hover {
+  background: #555;
+}
+
+/* Divider */
+hr {
+  border: none;
+  border-top: 1px solid #0f3460;
+  margin: 20px 0;
+}
+
+/* Error message */
+p.error {
+  color: #e94560 !important;
+  font-size: 0.85rem;
+  margin-top: 8px;
+  min-height: 20px;
+}
