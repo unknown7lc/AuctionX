@@ -21,6 +21,18 @@
     </div>
   </div>
 
+  <!-- SCREEN 1.5: Username Setup -->
+  <div id="screen-username" class="screen">
+    <div class="card">
+      <h1>🏏 Choose Your Name</h1>
+      <p>This is how other players will see you</p>
+      <input type="text" id="username-input" placeholder="Enter your username" maxlength="20"/>
+      <p class="username-hint">Max 20 characters, no spaces</p>
+      <button id="btn-save-username">✅ Save & Continue</button>
+      <p id="username-error" class="error"></p>
+    </div>
+  </div>
+
   <!-- SCREEN 2: Lobby -->
   <div id="screen-lobby" class="screen">
     <div class="card">
@@ -34,15 +46,169 @@
     </div>
   </div>
 
-  <!-- SCREEN 3: Auction Room -->
-  <div id="screen-room" class="screen">
-    <div class="card">
-      <h2>🎯 Auction Room</h2>
-      <p>Room Code: <strong id="room-code-display"></strong></p>
-      <div id="player-list"></div>
-      <button id="btn-start-auction">▶️ Start Auction</button>
+  <!-- SCREEN 3: Auction Room (Lobby) -->
+<div id="screen-room" class="screen">
+  <div class="card">
+    <h2>🎯 Auction Room</h2>
+    <p>Room Code: <strong id="room-code-display"></strong></p>
+    <div id="player-list"></div>
+    <button id="btn-start-auction">▶️ Start Auction</button>
+  </div>
+</div>
+
+<!-- SCREEN 4: Auction Screen -->
+<div id="screen-auction" class="screen">
+
+  <!-- Top Bar -->
+  <div class="auction-topbar">
+    <div class="budget-box">
+      💰 Budget: <strong id="my-budget">₹100 Cr</strong>
+    </div>
+    <div class="budget-box">
+      🏏 My Players: <strong id="my-players-count">0</strong>
+    </div>
+    <div class="budget-box">
+      👥 Room: <strong id="auction-room-code"></strong>
+    </div>
+    <button id="btn-myteam">👁️ My Team</button>
+  </div>
+
+  <!-- Player Card -->
+  <div class="auction-card">
+    <div id="player-card">
+
+      <!-- Player Info -->
+      <div class="player-info">
+        <div class="player-emoji" id="player-emoji">🏏</div>
+        <h2 id="player-name">Waiting...</h2>
+        <p id="player-role">Role</p>
+        <p id="player-team">Team</p>
+      </div>
+
+      <!-- Base Price -->
+      <div class="base-price">
+        Base Price: <strong id="base-price">₹0 Cr</strong>
+      </div>
+
+      <!-- Current Bid -->
+      <div class="current-bid">
+        <p>Current Bid</p>
+        <h1 id="current-bid-amount">₹0 Cr</h1>
+        <p id="current-bidder">No bids yet</p>
+      </div>
+
+      <!-- Timer -->
+      <div class="timer-box">
+        <div id="timer-display">30</div>
+        <p>seconds</p>
+      </div>
+
+      <!-- Bid Controls -->
+      <div class="bid-controls">
+        <button id="btn-bid-5">+₹5 Cr</button>
+        <button id="btn-bid-10">+₹10 Cr</button>
+        <button id="btn-bid-20">+₹20 Cr</button>
+      </div>
+
+      <!-- Host Controls -->
+      <div id="host-controls" style="display:none">
+        <button id="btn-sold" class="btn-sold">✅ SOLD!</button>
+        <button id="btn-unsold" class="btn-unsold">❌ Unsold</button>
+      </div>
+
     </div>
   </div>
+
+  <!-- Sold Players List -->
+  <div class="sold-list-box">
+    <h3>📋 Sold Players</h3>
+    <div id="sold-list"></div>
+  </div>
+
+</div>
+
+<!-- SCREEN 5: My Team -->
+<div id="screen-myteam" class="screen">
+  <div class="myteam-container">
+
+    <!-- Header -->
+    <div class="myteam-header">
+      <h2>🏆 My Team</h2>
+      <button id="btn-back-auction">⬅️ Back to Auction</button>
+    </div>
+
+    <!-- Budget Summary -->
+    <div class="budget-summary">
+      <div class="budget-stat">
+        <h3 id="stat-budget-left">₹100 Cr</h3>
+        <p>Budget Left</p>
+      </div>
+      <div class="budget-stat">
+        <h3 id="stat-budget-spent">₹0 Cr</h3>
+        <p>Budget Spent</p>
+      </div>
+      <div class="budget-stat">
+        <h3 id="stat-players-bought">0</h3>
+        <p>Players Bought</p>
+      </div>
+    </div>
+
+    <!-- My Players List -->
+    <div class="myteam-list-box">
+      <h3>👥 My Players</h3>
+      <div id="myteam-list">
+        <p class="no-players">No players yet. Start bidding!</p>
+      </div>
+    </div>
+
+    <!-- All Teams Summary -->
+    <div class="myteam-list-box">
+      <h3>📊 All Teams</h3>
+      <div id="allteams-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SCREEN 6: Auction Results -->
+<div id="screen-results" class="screen">
+  <div class="results-container">
+
+    <!-- Header -->
+    <div class="results-header">
+      <h1>🏆 Auction Complete!</h1>
+      <p id="results-room-code">Room: </p>
+    </div>
+
+    <!-- Winner Banner -->
+    <div class="winner-banner">
+      <div class="winner-crown">👑</div>
+      <h2>Best Squad</h2>
+      <h1 id="winner-name">Loading...</h1>
+      <p id="winner-stats">0 players • ₹0 Cr spent</p>
+    </div>
+
+    <!-- All Teams Ranking -->
+    <div class="results-box">
+      <h3>📊 Final Rankings</h3>
+      <div id="final-rankings"></div>
+    </div>
+
+    <!-- My Final Team -->
+    <div class="results-box">
+      <h3>🏏 My Final Squad</h3>
+      <div id="final-myteam"></div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="results-actions">
+      <button id="btn-view-season">🗓️ View Season Leaderboard</button>
+      <button id="btn-share-result">📤 Share My Team</button>
+      <button id="btn-new-auction">🔄 New Auction</button>
+    </div>
+
+  </div>
+</div>
 
   <!-- Firebase SDKs -->
 <script type="module" src="app.js"></script>
