@@ -69,6 +69,13 @@ function showScreen(screenId) {
     screen.classList.remove('active');
   });
   document.getElementById(screenId).classList.add('active');
+  
+  // Dim spotlight on auction screen
+  if (screenId === 'screen-auction') {
+    document.body.classList.add('auction-active');
+  } else {
+    document.body.classList.remove('auction-active');
+  }
 }
 
 // ============================================
@@ -627,7 +634,11 @@ async function startAuctionNow() {
       currentBidder: null,
       currentBidderEmail: 'No bids yet',
       timerStartedAt: now.getTime(),
-      timerDuration: settings.timer || 30
+      timerDuration: settings.timer || 30,
+      lastResult: null,
+      lastResultPlayer: null,
+      lastResultBuyer: null,
+      lastResultAmount: null
     });
     myBudget = settings.budget || 100;
     document.getElementById('my-budget').textContent = '₹' + myBudget + ' Cr';
@@ -659,9 +670,10 @@ async function handleTimerEnd() {
     var player = orderedPlayers[idx];
     if (!player) return;
 
-    // Check if anyone bid
+    var updatePayload = {};
+
     if (data.currentBidder) {
-      // SOLD to highest bidder
+      // SOLD
       soldPlayers.push({
         playerName: player.name,
         playerRole: player.role,
@@ -670,29 +682,38 @@ async function handleTimerEnd() {
         soldToId: data.currentBidder,
         soldFor: data.currentBid || player.basePrice
       });
-      showSoldAnimation(player.name, data.currentBidderEmail, data.currentBid);
+      // Write result to Firestore so ALL users see the animation
+      updatePayload.lastResult = 'sold';
+      updatePayload.lastResultPlayer = player.name;
+      updatePayload.lastResultBuyer = data.currentBidderEmail;
+      updatePayload.lastResultAmount = data.currentBid || player.basePrice;
     } else {
       // UNSOLD
-      showUnsoldAnimation(player.name);
+      updatePayload.lastResult = 'unsold';
+      updatePayload.lastResultPlayer = player.name;
+      updatePayload.lastResultBuyer = null;
+      updatePayload.lastResultAmount = null;
     }
 
     var nextIndex = idx + 1;
     if (nextIndex >= orderedPlayers.length) {
-      await updateDoc(roomRef, { status: 'finished', soldPlayers: soldPlayers });
-      setTimeout(function() { showResults(currentRoomCode); }, 2000);
+      updatePayload.status = 'finished';
+      updatePayload.soldPlayers = soldPlayers;
+      await updateDoc(roomRef, updatePayload);
+      setTimeout(function() { showResults(currentRoomCode); }, 2500);
       return;
     }
 
     var now = new Date();
-    await updateDoc(roomRef, {
-      currentPlayerIndex: nextIndex,
-      currentBid: orderedPlayers[nextIndex].basePrice,
-      currentBidder: null,
-      currentBidderEmail: 'No bids yet',
-      soldPlayers: soldPlayers,
-      timerStartedAt: now.getTime() + 2000,
-      timerDuration: settings.timer || 30
-    });
+    updatePayload.currentPlayerIndex = nextIndex;
+    updatePayload.currentBid = orderedPlayers[nextIndex].basePrice;
+    updatePayload.currentBidder = null;
+    updatePayload.currentBidderEmail = 'No bids yet';
+    updatePayload.soldPlayers = soldPlayers;
+    updatePayload.timerStartedAt = now.getTime() + 2500; // delay so animation plays first
+    updatePayload.timerDuration = settings.timer || 30;
+
+    await updateDoc(roomRef, updatePayload);
   } catch (error) {
     console.error('Timer end error:', error);
   }
@@ -702,30 +723,43 @@ async function handleTimerEnd() {
 // SOLD/UNSOLD ANIMATIONS
 // ============================================
 function showSoldAnimation(playerName, buyerName, amount) {
+  // Remove any existing overlay first
+  var existing = document.getElementById('result-overlay');
+  if (existing) existing.remove();
+
   var overlay = document.createElement('div');
+  overlay.id = 'result-overlay';
   overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:fadeIn 0.3s ease;';
   overlay.innerHTML =
-    '<div style="font-family:var(--font-display);font-size:5rem;font-weight:700;color:#28a745;letter-spacing:4px;margin-bottom:16px;">SOLD!</div>' +
-    '<div style="font-family:var(--font-display);font-size:2rem;color:#fff;margin-bottom:8px;">' + playerName + '</div>' +
-    '<div style="font-size:1.2rem;color:#e94560;font-family:var(--font-display);">₹' + amount + ' Cr → ' + buyerName + '</div>';
+    '<div style="font-family:var(--font-d);font-size:5rem;font-weight:700;color:#28a745;letter-spacing:4px;margin-bottom:16px;">SOLD!</div>' +
+    '<div style="font-family:var(--font-d);font-size:2rem;color:#fff;margin-bottom:8px;">' + playerName + '</div>' +
+    '<div style="font-size:1.2rem;color:#e94560;font-family:var(--font-d);">₹' + amount + ' Cr → ' + buyerName + '</div>';
   document.body.appendChild(overlay);
-  setTimeout(function() { overlay.remove(); }, 2000);
+  setTimeout(function() { if (overlay.parentNode) overlay.remove(); }, 2400);
 }
 
 function showUnsoldAnimation(playerName) {
+  var existing = document.getElementById('result-overlay');
+  if (existing) existing.remove();
+
   var overlay = document.createElement('div');
+  overlay.id = 'result-overlay';
   overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:fadeIn 0.3s ease;';
   overlay.innerHTML =
-    '<div style="font-family:var(--font-display);font-size:5rem;font-weight:700;color:#dc3545;letter-spacing:4px;margin-bottom:16px;">UNSOLD</div>' +
-    '<div style="font-family:var(--font-display);font-size:2rem;color:#fff;">' + playerName + '</div>';
+    '<div style="font-family:var(--font-d);font-size:5rem;font-weight:700;color:#dc3545;letter-spacing:4px;margin-bottom:16px;">UNSOLD</div>' +
+    '<div style="font-family:var(--font-d);font-size:2rem;color:#fff;">' + playerName + '</div>';
   document.body.appendChild(overlay);
-  setTimeout(function() { overlay.remove(); }, 2000);
+  setTimeout(function() { if (overlay.parentNode) overlay.remove(); }, 2400);
 }
 
 // ============================================
 // LISTEN TO AUCTION
 // ============================================
 var lastPlayerIndex = -1;
+// BUG 2 FIX: track lastBidder to reset timer on new bid
+var lastBidder = null;
+// BUG 3 FIX: track lastResult to avoid showing animation multiple times
+var lastResultKey = null;
 
 function listenToAuction(roomCode) {
   var roomRef = doc(db, 'rooms', roomCode);
@@ -776,8 +810,13 @@ function listenToAuction(roomCode) {
       var basePriceEl = document.getElementById('base-price');
       if (basePriceEl) basePriceEl.innerHTML = '₹' + player.basePrice + ' Cr';
     }
+    // Update player counter
+    var counterEl = document.getElementById('current-player-num');
+    var totalEl = document.getElementById('total-player-num');
+    if (counterEl) counterEl.textContent = idx + 1;
+    if (totalEl) totalEl.textContent = orderedPlayers.length;
 
-    // Update bid
+    // Update bid display
     var bid = data.currentBid || 0;
     document.getElementById('current-bid-amount').textContent = '₹' + bid + ' Cr';
     document.getElementById('current-bidder').textContent = data.currentBidderEmail || 'No bids yet';
@@ -788,12 +827,29 @@ function listenToAuction(roomCode) {
     // Update players info panel
     updatePlayersInfoPanel(data);
 
-    // Start timer — only reset if player changed
+    // ---- BUG 3 FIX: Show SOLD/UNSOLD animation for ALL users ----
+    // Use idx + lastResult as a unique key to prevent re-showing
+    var resultKey = (data.lastResult || '') + '_' + idx + '_' + (data.lastResultPlayer || '');
+    if (data.lastResult && resultKey !== lastResultKey) {
+      lastResultKey = resultKey;
+      if (data.lastResult === 'sold') {
+        showSoldAnimation(data.lastResultPlayer, data.lastResultBuyer, data.lastResultAmount);
+      } else if (data.lastResult === 'unsold') {
+        showUnsoldAnimation(data.lastResultPlayer);
+      }
+    }
+
+    // ---- Timer logic ----
     var timerDuration = settings.timer || 30;
     currentTimerDuration = timerDuration;
 
-    if (idx !== lastPlayerIndex) {
+    var playerChanged = idx !== lastPlayerIndex;
+    // BUG 2 FIX: also reset timer when bidder changes
+    var bidderChanged = data.currentBidder !== lastBidder;
+
+    if (playerChanged || bidderChanged) {
       lastPlayerIndex = idx;
+      lastBidder = data.currentBidder;
       var timerStartedAt = data.timerStartedAt || Date.now();
       var elapsed = Math.floor((Date.now() - timerStartedAt) / 1000);
       var remaining = Math.max(0, timerDuration - elapsed);
@@ -863,8 +919,6 @@ function startTimer(seconds, totalSeconds) {
   var timerBarFill = document.getElementById('auc-timer-bar-fill');
   var timerBarAmount = document.getElementById('auc-timer-bar-val');
 
-  var circumference = 163.4; // 2*PI*26
-  var ringFill = document.getElementById('timer-ring-fill');
 
   function updateTimerUI() {
     if (timerEl) {
@@ -872,15 +926,6 @@ function startTimer(seconds, totalSeconds) {
       if (timeLeft <= 5) { timerEl.style.color = '#ff0000'; }
       else if (timeLeft <= 10) { timerEl.style.color = '#ff4444'; }
       else { timerEl.style.color = 'var(--red)'; }
-    }
-    if (ringFill) {
-      var ringPct = Math.max(0, timeLeft / total);
-      var offset = circumference * (1 - ringPct);
-      ringFill.setAttribute('stroke-dasharray', circumference);
-      ringFill.setAttribute('stroke-dashoffset', offset);
-      if (ringPct <= 0.3) ringFill.style.stroke = '#dc3545';
-      else if (ringPct <= 0.6) ringFill.style.stroke = '#ffc107';
-      else ringFill.style.stroke = '#e94560';
     }
     if (timerBarFill) {
       var pct = Math.max(0, (timeLeft / total) * 100);
@@ -941,7 +986,13 @@ async function placeBid(amount) {
     var userRef = doc(db, 'users', user.uid);
     var userSnap = await getDoc(userRef);
     var displayName = userSnap.exists() ? userSnap.data().username : user.email;
-    await updateDoc(roomRef, { currentBid: newBid, currentBidder: user.uid, currentBidderEmail: displayName });
+    var now = new Date();
+    await updateDoc(roomRef, {
+      currentBid: newBid,
+      currentBidder: user.uid,
+      currentBidderEmail: displayName,
+      timerStartedAt: now.getTime(),  // BUG 2 FIX: reset timer on bid
+    });
   } catch (error) {
     console.error('Bid error:', error);
   }
@@ -958,11 +1009,17 @@ function updateSoldList(soldPlayers) {
   var soldList = document.getElementById('sold-list');
   if (!soldList) return;
   soldList.innerHTML = '';
-  soldPlayers.forEach(function(item) {
+  soldPlayers.forEach(function(item, index) {
     var div = document.createElement('div');
     div.className = 'sold-item';
-    div.innerHTML = '<span>' + item.playerName + '</span><strong>₹' + item.soldFor + ' Cr - ' + item.soldTo + '</strong>';
+    div.innerHTML = item.playerName + ' <span class="sold-price">₹' + item.soldFor + ' Cr - ' + item.soldTo + '</span>';
     soldList.appendChild(div);
+    if (index < soldPlayers.length - 1) {
+      var sep = document.createElement('div');
+      sep.className = 'sold-sep';
+      sep.textContent = '·';
+      soldList.appendChild(sep);
+    }
   });
 }
 
