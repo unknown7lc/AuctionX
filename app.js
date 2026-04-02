@@ -620,6 +620,9 @@ function getOrderedPlayers(order) {
 async function startAuctionNow() {
   if (!currentRoomCode) return;
   try {
+    var soldList = document.getElementById('sold-list');
+    if (soldList) soldList.innerHTML = '';
+    
     var roomSnap = await getDoc(doc(db, 'rooms', currentRoomCode));
     var data = roomSnap.data();
     var settings = data.settings || {};
@@ -1009,7 +1012,8 @@ function updateSoldList(soldPlayers) {
   var soldList = document.getElementById('sold-list');
   if (!soldList) return;
   soldList.innerHTML = '';
-  soldPlayers.forEach(function(item, index) {
+  var reversedPlayers = soldPlayers.slice().reverse();
+  reversedPlayers.forEach(function(item, index) {
     var div = document.createElement('div');
     div.className = 'sold-item';
     div.innerHTML = item.playerName + ' <span class="sold-price">₹' + item.soldFor + ' Cr - ' + item.soldTo + '</span>';

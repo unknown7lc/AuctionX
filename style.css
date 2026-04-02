@@ -1348,7 +1348,7 @@ hr { border:none; border-top:1px solid var(--border2); margin:20px 0; }
 
 .auc-ticker-scroll {
   display:flex; align-items:center;
-  gap:0; flex-wrap:nowrap; flex:1; overflow:hidden;
+  gap:0; flex-wrap:nowrap; flex:1; overflow-x:auto;
 }
 
 .sold-item {
@@ -1564,3 +1564,35 @@ hr { border:none; border-top:1px solid var(--border2); margin:20px 0; }
 }
 
 .btn-unsold:hover { background:#dc3545!important; color:white!important; box-shadow:0 8px 20px rgba(220,53,69,0.4)!important; transform:translateY(-2px)!important; }
+
+/* ==============================
+   CUSTOM SCROLLBAR FOR TICKER
+============================== */
+
+/* 1. For Firefox */
+.auc-ticker-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--red) rgba(255, 255, 255, 0.05);
+}
+
+/* 2. For Chrome, Edge, Safari, and Opera */
+.auc-ticker-scroll::-webkit-scrollbar {
+  height: 6px; /* Makes the horizontal scrollbar thin and sleek */
+}
+
+/* The track (background) of the scrollbar */
+.auc-ticker-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05); /* Slight transparent dark background */
+  border-radius: 10px;
+}
+
+/* The draggable thumb itself */
+.auc-ticker-scroll::-webkit-scrollbar-thumb {
+  background: var(--red); /* Uses your exact theme red */
+  border-radius: 10px;
+}
+
+/* When you hover over the draggable thumb */
+.auc-ticker-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--red-deep); /* Uses your darker red variable */
+}
