@@ -455,13 +455,16 @@ onAuthStateChanged(auth, function(user) {
 document.getElementById('btn-login').addEventListener('click', function() {
   var email = document.getElementById('email').value;
   var password = document.getElementById('password').value;
+  var errEl = document.getElementById('auth-error');
   if (email === '' || password === '') {
-    document.getElementById('auth-error').textContent = 'Please fill in all fields.';
+    errEl.textContent = 'Please fill in all fields.';
+    errEl.style.display = 'block';
     return;
   }
   signInWithEmailAndPassword(auth, email, password)
     .catch(function(error) {
-      document.getElementById('auth-error').textContent = error.message;
+      errEl.textContent = error.message;
+      errEl.style.display = 'block';
     });
 });
 
@@ -471,17 +474,20 @@ document.getElementById('btn-login').addEventListener('click', function() {
 document.getElementById('btn-register').addEventListener('click', function() {
   var email = document.getElementById('email').value;
   var password = document.getElementById('password').value;
+  var errEl = document.getElementById('auth-error');
   if (email === '' || password === '') {
-    document.getElementById('auth-error').textContent = 'Please fill in all fields.';
+    errEl.textContent = 'Please fill in all fields.';
+    errEl.style.display = 'block';
     return;
   }
   createUserWithEmailAndPassword(auth, email, password)
     .then(function(userCredential) {
-      // Send verification email immediately after registration
-      return sendEmailVerification(userCredential.user);
+      sendEmailVerification(userCredential.user, actionCodeSettings)
+        .catch(function(err) { console.error('Verification send error:', err); });
     })
     .catch(function(error) {
-      document.getElementById('auth-error').textContent = error.message;
+      errEl.textContent = error.message;
+      errEl.style.display = 'block';
     });
 });
 
@@ -527,6 +533,8 @@ document.getElementById('btn-check-verified').addEventListener('click', function
   if (!user) return;
   var btn = document.getElementById('btn-check-verified');
 
+  // Lock the button width before changing content
+  btn.style.width = btn.offsetWidth + 'px';
   btn.disabled = true;
   btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> CHECKING...';
 
@@ -550,11 +558,13 @@ document.getElementById('btn-check-verified').addEventListener('click', function
     } else {
       showVerifyStatus('Not verified yet. Please click the link in your email.', 'error');
       btn.disabled = false;
+      btn.style.width = '';  // Release the lock
       btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> I\'VE VERIFIED MY EMAIL';
     }
   }).catch(function(error) {
     showVerifyStatus('Error checking status: ' + error.message, 'error');
     btn.disabled = false;
+    btn.style.width = '';  // Release the lock
     btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> I\'VE VERIFIED MY EMAIL';
   });
 });
@@ -580,9 +590,9 @@ function showVerifyStatus(message, type) {
 function hideVerifyStatus() {
   var el = document.getElementById('verify-status');
   if (!el) return;
-  el.style.display = 'none';
   el.className = 'verify-status';
   el.textContent = '';
+  el.style.display = 'none';
 }
 
 // ============================================
