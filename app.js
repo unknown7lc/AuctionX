@@ -2,9 +2,9 @@
 // FIREBASE SETUP
 // ============================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
+import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 // ============================================
 // GLOBAL VARIABLES
 // ============================================
@@ -39,27 +39,263 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const analytics = getAnalytics(app);
 
 // ============================================
-// IPL PLAYERS DATA
+// BREVO CONFIG
 // ============================================
-const IPL_PLAYERS = [
-  { id: 1,  name: "Virat Kohli",       role: "Batsman",      team: "RCB", basePrice: 2 },
-  { id: 2,  name: "Rohit Sharma",      role: "Batsman",      team: "MI",  basePrice: 2 },
-  { id: 3,  name: "MS Dhoni",          role: "Wicketkeeper", team: "CSK", basePrice: 2 },
-  { id: 4,  name: "Jasprit Bumrah",    role: "Bowler",       team: "MI",  basePrice: 2 },
-  { id: 5,  name: "Hardik Pandya",     role: "All-rounder",  team: "MI",  basePrice: 2 },
-  { id: 6,  name: "KL Rahul",          role: "Batsman",      team: "LSG", basePrice: 1 },
-  { id: 7,  name: "Ravindra Jadeja",   role: "All-rounder",  team: "CSK", basePrice: 1 },
-  { id: 8,  name: "Shubman Gill",      role: "Batsman",      team: "GT",  basePrice: 1 },
-  { id: 9,  name: "Mohammed Siraj",    role: "Bowler",       team: "RCB", basePrice: 1 },
-  { id: 10, name: "Rishabh Pant",      role: "Wicketkeeper", team: "DC",  basePrice: 2 },
-  { id: 11, name: "Suryakumar Yadav",  role: "Batsman",      team: "MI",  basePrice: 1 },
-  { id: 12, name: "Yuzvendra Chahal",  role: "Bowler",       team: "RR",  basePrice: 1 },
-  { id: 13, name: "David Warner",      role: "Batsman",      team: "DC",  basePrice: 1 },
-  { id: 14, name: "Andre Russell",     role: "All-rounder",  team: "KKR", basePrice: 1 },
-  { id: 15, name: "Pat Cummins",       role: "Bowler",       team: "SRH", basePrice: 1 }
-];
+const BREVO_API_KEY = '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';
+const BREVO_SENDER_EMAIL = 'auctionx.noreply@gmail.com';
+const BREVO_SENDER_NAME = 'AuctionX';
+
+// ============================================
+// OTP HELPERS
+// ============================================
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+async function sendOTPEmail(toEmail, otp) {
+  var response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'api-key': BREVO_API_KEY
+    },
+    body: JSON.stringify({
+      sender: { name: BREVO_SENDER_NAME, email: BREVO_SENDER_EMAIL },
+      to: [{ email: toEmail }],
+      subject: 'Your AuctionX verification code',
+      htmlContent: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;background:#080810;color:#ffffff;padding:32px;border-radius:16px;border:1px solid rgba(233,69,96,0.2)">
+          <div style="text-align:center;margin-bottom:24px">
+            <div style="background:linear-gradient(135deg,#e94560,#c0392b);width:56px;height:56px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:white;letter-spacing:1px">AX</div>
+            <h1 style="font-size:1.6rem;letter-spacing:3px;margin:12px 0 4px;color:#ffffff">AUCTIONX</h1>
+            <p style="color:#606080;font-size:0.75rem;letter-spacing:2px;margin:0">OUTBID. OUTSMART. OUTPLAY.</p>
+          </div>
+          <p style="color:#a0a0b8;line-height:1.6;margin-bottom:8px">Your verification code is:</p>
+          <div style="text-align:center;margin:24px 0">
+            <span style="font-size:2.5rem;font-weight:700;letter-spacing:12px;color:#e94560;background:rgba(233,69,96,0.08);padding:16px 24px;border-radius:12px;border:1px solid rgba(233,69,96,0.2)">${otp}</span>
+          </div>
+          <p style="color:#a0a0b8;line-height:1.6">This code expires in <strong style="color:#ffffff">10 minutes</strong>.</p>
+          <p style="color:#a0a0b8;line-height:1.6">If you didn't create an AuctionX account, ignore this email.</p>
+          <p style="color:#606080;font-size:0.82rem;margin-top:24px">— The AuctionX Team</p>
+        </div>
+      `
+    })
+  });
+  return response.ok;
+}
+
+async function saveOTPToFirestore(uid, otp) {
+  var userRef = doc(db, 'users', uid);
+  await updateDoc(userRef, {
+    emailOTP: otp,
+    emailOTPExpiry: Date.now() + 10 * 60 * 1000, // 10 minutes
+    emailVerified: false
+  });
+}
+
+async function verifyOTPFromFirestore(uid, enteredOTP) {
+  var userRef = doc(db, 'users', uid);
+  var snap = await getDoc(userRef);
+  if (!snap.exists()) return { success: false, message: 'User not found.' };
+  var data = snap.data();
+  if (!data.emailOTP) return { success: false, message: 'No OTP found. Please resend.' };
+  if (Date.now() > data.emailOTPExpiry) return { success: false, message: 'Code expired. Please resend.' };
+  if (data.emailOTP !== enteredOTP) return { success: false, message: 'Incorrect code. Try again.' };
+  await updateDoc(userRef, {
+    emailOTP: null,
+    emailOTPExpiry: null,
+    emailVerified: true
+  });
+  return { success: true };
+}
+
+// ============================================
+// OTP SCREEN — AUTO FOCUS INPUTS
+// ============================================
+function initOTPInputs() {
+  var inputs = document.querySelectorAll('.otp-input');
+  inputs.forEach(function(input, index) {
+    input.addEventListener('input', function() {
+      input.value = input.value.replace(/[^0-9]/g, '');
+      if (input.value.length === 1) {
+        input.classList.add('filled');
+        if (index < inputs.length - 1) inputs[index + 1].focus();
+      }
+    });
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Backspace' && input.value === '' && index > 0) {
+        inputs[index - 1].focus();
+        inputs[index - 1].classList.remove('filled');
+      }
+    });
+    input.addEventListener('paste', function(e) {
+      e.preventDefault();
+      var paste = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+      paste.split('').forEach(function(char, i) {
+        if (inputs[index + i]) {
+          inputs[index + i].value = char;
+          inputs[index + i].classList.add('filled');
+        }
+      });
+      var nextEmpty = index + paste.length;
+      if (inputs[nextEmpty]) inputs[nextEmpty].focus();
+    });
+  });
+}
+initOTPInputs();
+
+function getOTPValue() {
+  var inputs = document.querySelectorAll('.otp-input');
+  return Array.from(inputs).map(function(i) { return i.value; }).join('');
+}
+
+function clearOTPInputs() {
+  document.querySelectorAll('.otp-input').forEach(function(input) {
+    input.value = '';
+    input.classList.remove('filled');
+  });
+}
+
+function showOTPStatus(message, type) {
+  var el = document.getElementById('otp-status');
+  if (!el) return;
+  el.textContent = message;
+  el.className = 'verify-status ' + type;
+  el.style.display = 'block';
+}
+
+function hideOTPStatus() {
+  var el = document.getElementById('otp-status');
+  if (!el) return;
+  el.style.display = 'none';
+  el.className = 'verify-status';
+  el.textContent = '';
+}
+
+// ============================================
+// OTP SCREEN — SEND OTP (called after register)
+// ============================================
+async function sendOTPToUser(user) {
+  var otp = generateOTP();
+  try {
+    await setDoc(doc(db, 'users', user.uid), {
+      email: user.email,
+      uid: user.uid,
+      emailOTP: otp,
+      emailOTPExpiry: Date.now() + 10 * 60 * 1000,
+      emailVerified: false,
+      createdAt: new Date()
+    }, { merge: true });
+    var sent = await sendOTPEmail(user.email, otp);
+    if (!sent) throw new Error('Email sending failed');
+    var chipEl = document.getElementById('otp-email-display');
+    if (chipEl) chipEl.textContent = user.email;
+    showScreen('screen-otp');
+  } catch(err) {
+    console.error('OTP send error:', err);
+  }
+}
+
+// ============================================
+// OTP SCREEN — VERIFY BUTTON
+// ============================================
+document.getElementById('btn-verify-otp').addEventListener('click', async function() {
+  var user = auth.currentUser;
+  if (!user) return;
+  var otp = getOTPValue();
+  if (otp.length < 6) { showOTPStatus('Please enter all 6 digits.', 'error'); return; }
+  var btn = document.getElementById('btn-verify-otp');
+  btn.disabled = true;
+  btn.textContent = 'VERIFYING...';
+  var result = await verifyOTPFromFirestore(user.uid, otp);
+  if (result.success) {
+    showOTPStatus('Verified! Taking you in...', 'success');
+    setTimeout(function() {
+      var userRef = doc(db, 'users', user.uid);
+      getDoc(userRef).then(function(snapshot) {
+        if (snapshot.exists() && snapshot.data().username) {
+          if (document.getElementById('nav-username'))
+            document.getElementById('nav-username').textContent = snapshot.data().username;
+          if (document.getElementById('hero-username'))
+            document.getElementById('hero-username').textContent = snapshot.data().username;
+          document.body.classList.remove('unverified'); 
+          var b = document.getElementById('verify-banner');
+          if (b) b.remove();
+          showScreen('screen-lobby');
+          loadDashboard(user);
+        } else {
+          showScreen('screen-username');
+        }
+      });
+    }, 1000);
+  } else {
+    showOTPStatus(result.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> VERIFY CODE';
+    clearOTPInputs();
+    document.getElementById('otp-1').focus();
+  }
+});
+
+// ============================================
+// OTP SCREEN — RESEND BUTTON
+// ============================================
+document.getElementById('btn-resend-otp').addEventListener('click', async function() {
+  var user = auth.currentUser;
+  if (!user) return;
+  var btn = document.getElementById('btn-resend-otp');
+  btn.disabled = true;
+  btn.style.opacity = '0.6';
+  hideOTPStatus();
+  clearOTPInputs();
+  await sendOTPToUser(user);
+  showOTPStatus('New code sent! Check your inbox.', 'success');
+  setTimeout(function() {
+    btn.disabled = false;
+    btn.style.opacity = '';
+    hideOTPStatus();
+  }, 60000);
+});
+
+// ============================================
+// OTP SCREEN — LOGOUT
+// ============================================
+document.getElementById('btn-otp-logout').addEventListener('click', function() {
+  signOut(auth).catch(function(error) { console.error(error); });
+});
+
+// ============================================
+// ANALYTICS HELPER
+// ============================================
+function track(eventName, params = {}) {
+  try {
+    logEvent(analytics, eventName, params);
+  } catch(e) {
+    // silently fail — never break the app for analytics
+  }
+}
+
+// ============================================
+// PLAYER DATA — loaded dynamically per event
+// ============================================
+let IPL_PLAYERS = [];
+
+async function loadPlayersForEvent(eventId) {
+  if (eventId === 'ipl2026') {
+    if (IPL_PLAYERS.length > 0) return; // already loaded, skip
+    const module = await import('./data/ipl2026.js');
+    IPL_PLAYERS = module.IPL_PLAYERS;
+  }
+  // future sports:
+  // else if (eventId === 'fifa2026') {
+  //   const module = await import('./data/fifa2026.js');
+  //   IPL_PLAYERS = module.IPL_PLAYERS;
+  // }
+}
 
 // ============================================
 // SCREEN SWITCHER
@@ -69,15 +305,14 @@ function showScreen(screenId) {
     screen.classList.remove('active');
   });
   document.getElementById(screenId).classList.add('active');
-  
-  // Dim spotlight on auction screen
+  track('screen_view', { screen_name: screenId });
+
   if (screenId === 'screen-auction') {
     document.body.classList.add('auction-active');
   } else {
     document.body.classList.remove('auction-active');
   }
 }
-
 // ============================================
 // STADIUM FLOODLIGHT EFFECT
 // ============================================
@@ -162,19 +397,30 @@ onAuthStateChanged(auth, function(user) {
   if (user) {
     var userRef = doc(db, 'users', user.uid);
     getDoc(userRef).then(function(snapshot) {
-      if (snapshot.exists() && snapshot.data().username) {
-        var username = snapshot.data().username;
-        if (document.getElementById('nav-username'))
-          document.getElementById('nav-username').textContent = username;
-        if (document.getElementById('hero-username'))
-          document.getElementById('hero-username').textContent = username;
-        showScreen('screen-lobby');
-        loadDashboard(user);
-      } else {
+      var data = snapshot.exists() ? snapshot.data() : {};
+      var isVerified = data.emailVerified === true;
+      var hasUsername = !!(data.username);
+
+      if (!snapshot.exists() || !hasUsername) {
+        // New user or no username yet — go to username screen
         showScreen('screen-username');
+        return;
       }
+
+      // Has username — go straight to dashboard
+      if (document.getElementById('nav-username'))
+        document.getElementById('nav-username').textContent = data.username;
+      if (document.getElementById('hero-username'))
+        document.getElementById('hero-username').textContent = data.username;
+      showScreen('screen-lobby');
+      loadDashboard(user);
+      showVerificationBanner(isVerified);
     });
   } else {
+    // Logged out — always go to login screen
+    var banner = document.getElementById('verify-banner');
+    if (banner) banner.remove();
+    document.body.classList.remove('unverified');
     showScreen('screen-login');
   }
 });
@@ -185,14 +431,21 @@ onAuthStateChanged(auth, function(user) {
 document.getElementById('btn-login').addEventListener('click', function() {
   var email = document.getElementById('email').value;
   var password = document.getElementById('password').value;
+  var errEl = document.getElementById('auth-error');
   if (email === '' || password === '') {
-    document.getElementById('auth-error').textContent = 'Please fill in all fields.';
+    errEl.textContent = 'Please fill in all fields.';
+    errEl.style.display = 'block';
     return;
   }
   signInWithEmailAndPassword(auth, email, password)
-    .catch(function(error) {
-      document.getElementById('auth-error').textContent = error.message;
-    });
+  .then(function() {
+    track('login', { method: 'email' });
+  })
+  .catch(function(error) {
+    errEl.textContent = error.message;
+    errEl.style.display = 'block';
+    track('login_error', { error: error.code });
+  });
 });
 
 // ============================================
@@ -201,13 +454,21 @@ document.getElementById('btn-login').addEventListener('click', function() {
 document.getElementById('btn-register').addEventListener('click', function() {
   var email = document.getElementById('email').value;
   var password = document.getElementById('password').value;
+  var errEl = document.getElementById('auth-error');
   if (email === '' || password === '') {
-    document.getElementById('auth-error').textContent = 'Please fill in all fields.';
+    errEl.textContent = 'Please fill in all fields.';
+    errEl.style.display = 'block';
     return;
   }
   createUserWithEmailAndPassword(auth, email, password)
+    .then(function(userCredential) {
+      track('sign_up', { method: 'email' });
+      // onAuthStateChanged will handle navigation automatically
+    })
     .catch(function(error) {
-      document.getElementById('auth-error').textContent = error.message;
+      errEl.textContent = error.message;
+      errEl.style.display = 'block';
+      track('signup_error', { error: error.code });
     });
 });
 
@@ -237,6 +498,7 @@ document.getElementById('btn-save-username').addEventListener('click', async fun
     var userRef = doc(db, 'users', user.uid);
     await setDoc(userRef, { username: username, email: user.email, uid: user.uid, createdAt: new Date() });
     await setDoc(usernamesRef, { uid: user.uid });
+    track('username_set');
     showScreen('screen-lobby');
     loadDashboard(user);
   } catch (error) {
@@ -245,12 +507,45 @@ document.getElementById('btn-save-username').addEventListener('click', async fun
 });
 
 // ============================================
+//  VERIFICATION BANNER
+// ============================================
+function showVerificationBanner(isVerified) {
+  var existing = document.getElementById('verify-banner');
+  if (existing) existing.remove();
+  document.body.classList.remove('unverified');
+  if (isVerified) return;
+
+  var banner = document.createElement('div');
+  banner.id = 'verify-banner';
+  banner.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;font-family:var(--font-b);font-size:0.8rem;color:var(--text2);letter-spacing:0.3px;flex:1;">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e94560" stroke-width="2" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+      'Email not verified. You can browse freely, but cannot create or join public or official global rooms.' +
+    '</div>' +
+    '<button id="banner-verify-btn" style="padding:6px 16px;background:linear-gradient(135deg,#e94560,#c0392b);border:none;border-radius:8px;color:white;font-family:var(--font-d);font-size:0.75rem;letter-spacing:1px;cursor:pointer;white-space:nowrap;flex-shrink:0;">VERIFY NOW</button>';
+
+  // Insert as first child of dashboard-content, not fixed to body
+  var dashContent = document.getElementById('dashboard-content') || document.querySelector('.dashboard-content');
+  if (dashContent) {
+    dashContent.insertBefore(banner, dashContent.firstChild);
+  }
+  document.body.classList.add('unverified');
+
+  document.getElementById('banner-verify-btn').addEventListener('click', function() {
+    var user = auth.currentUser;
+    if (!user) return;
+    sendOTPToUser(user);
+  });
+}
+
+// ============================================
 // DASHBOARD
 // ============================================
 function loadDashboard(user) {
   loadUserStats(user);
   loadActiveEvents();
   loadGlobalLeaderboard(user);
+  loadPublicRooms();
 }
 
 function loadUserStats(user) {
@@ -284,6 +579,59 @@ function loadGlobalLeaderboard(user) {
     '<div class="lb-row"><span class="lb-rank lb-rank-bronze">3</span><div class="lb-avatar">AA</div><span class="lb-name">AuctionAce</span><span class="lb-pts">1,840 pts</span></div>';
 }
 
+function loadPublicRooms() {
+  var container = document.getElementById('public-rooms-list');
+  if (!container) return;
+
+  var q = query(collection(db, 'rooms'), where('type', '==', 'public'), where('status', '==', 'waiting'));
+  onSnapshot(q, function(snapshot) {
+    container.innerHTML = '';
+    if (snapshot.empty) {
+      container.innerHTML = '<p style="color:var(--text3);font-size:0.82rem;text-align:center;padding:20px 0;letter-spacing:0.5px;">No public rooms available right now. Create one!</p>';
+      return;
+    }
+    snapshot.forEach(function(docSnap) {
+      var room = docSnap.data();
+      var playerCount = Object.keys(room.players || {}).length;
+      var maxAllowed = room.maxPlayers || 10;
+      var isFull = playerCount >= maxAllowed;
+
+      var div = document.createElement('div');
+      div.className = 'public-room-card';
+      div.innerHTML =
+        '<div class="public-room-left">' +
+          '<div class="public-room-code">' + room.code + '</div>' +
+          '<div class="public-room-meta">Hosted by <span>' + (room.host || 'Unknown') + '</span></div>' +
+        '</div>' +
+        '<div class="public-room-right">' +
+          '<div class="public-room-count' + (isFull ? ' full' : '') + '">' +
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
+            playerCount + ' / ' + maxAllowed +
+          '</div>' +
+          '<button class="public-room-join-btn" data-code="' + room.code + '" ' + (isFull ? 'disabled' : '') + '>' +
+            (isFull ? 'FULL' : 'JOIN') +
+          '</button>' +
+        '</div>';
+      container.appendChild(div);
+    });
+
+    // Attach join handlers
+    container.querySelectorAll('.public-room-join-btn:not([disabled])').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        var user = auth.currentUser;
+        if (!user) return;
+        var snap = await getDoc(doc(db, 'users', user.uid));
+        if (!snap.exists() || !snap.data().emailVerified) {
+          await sendOTPToUser(user);
+          return;
+        }
+        document.getElementById('join-code').value = btn.dataset.code;
+        document.getElementById('btn-join-room').click();
+      });
+    });
+  });
+}
+
 // ============================================
 // ROOM TYPE TOGGLE
 // ============================================
@@ -309,11 +657,32 @@ function generateRoomCode() {
 }
 
 // ============================================
+// EMAIL VERIFICATION GUARD
+// Returns true if action is allowed, false if blocked
+// ============================================
+async function requiresVerification(roomType) {
+  if (roomType === 'public' || roomType === 'admin') {
+    var user = auth.currentUser;
+    if (!user) return false;
+    var snap = await getDoc(doc(db, 'users', user.uid));
+    if (!snap.exists() || !snap.data().emailVerified) {
+      await sendOTPToUser(user);
+      return false;
+    }
+  }
+  return true;
+}
+
+// ============================================
 // CREATE ROOM
 // ============================================
 document.getElementById('btn-create-room').addEventListener('click', async function() {
   var user = auth.currentUser;
   if (!user) return;
+
+  // Block unverified users from creating public rooms
+  if (!await requiresVerification(selectedRoomType)) return;
+
   var roomCode = generateRoomCode();
   currentRoomCode = roomCode;
   isHost = true;
@@ -324,10 +693,12 @@ document.getElementById('btn-create-room').addEventListener('click', async funct
       hostId: user.uid,
       status: 'waiting',
       type: selectedRoomType,
+      eventId: 'ipl2026',
       maxPlayers: maxPlayers,
       createdAt: new Date(),
       players: { [user.uid]: { email: user.email, joinedAt: new Date() } }
     });
+    track('room_created', { type: selectedRoomType });
     document.getElementById('room-code-display').textContent = roomCode;
     var lockSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
     var globeSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
@@ -359,10 +730,15 @@ document.getElementById('btn-join-room').addEventListener('click', async functio
     if (!roomSnap.exists()) { alert('Room not found!'); return; }
     if (roomSnap.data().status !== 'waiting') { alert('This room has already started!'); return; }
     var roomData = roomSnap.data();
+
+    // Block unverified users from joining public or admin rooms
+    if (!await requiresVerification(roomData.type)) return;
+
     var currentPlayers = Object.keys(roomData.players || {}).length;
     var maxAllowed = roomData.maxPlayers || 10;
     if (currentPlayers >= maxAllowed) { alert('This room is full! (' + maxAllowed + '/' + maxAllowed + ' players)'); return; }
     await updateDoc(roomRef, { ['players.' + user.uid]: { email: user.email, joinedAt: new Date() } });
+    track('room_joined', { type: roomData.type });
     currentRoomCode = code;
     isHost = false;
     document.getElementById('room-code-display').textContent = code;
@@ -407,7 +783,14 @@ document.getElementById('btn-leave-room').addEventListener('click', async functi
     var data = roomSnap.data();
     var players = data.players || {};
     delete players[user.uid];
-    await updateDoc(roomRef, { players: players });
+
+    // If no players left, delete the room entirely
+    if (Object.keys(players).length === 0) {
+      await deleteDoc(roomRef);
+    } else {
+      await updateDoc(roomRef, { players: players });
+    }
+
     currentRoomCode = null;
     isHost = false;
     showScreen('screen-lobby');
@@ -542,6 +925,7 @@ document.getElementById('btn-back-lobby').addEventListener('click', function() {
 document.getElementById('btn-confirm-start').addEventListener('click', async function() {
   if (!currentRoomCode) return;
   try {
+    await loadPlayersForEvent('ipl2026');
     var orderedPlayers = getOrderedPlayers(setupOrder);
     await updateDoc(doc(db, 'rooms', currentRoomCode), {
       settings: {
@@ -618,6 +1002,7 @@ function getOrderedPlayers(order) {
 // START AUCTION NOW
 // ============================================
 async function startAuctionNow() {
+  await loadPlayersForEvent('ipl2026');
   if (!currentRoomCode) return;
   try {
     var soldList = document.getElementById('sold-list');
@@ -626,8 +1011,8 @@ async function startAuctionNow() {
     var roomSnap = await getDoc(doc(db, 'rooms', currentRoomCode));
     var data = roomSnap.data();
     var settings = data.settings || {};
-    var orderedPlayers = settings.playerOrder
-      ? settings.playerOrder.map(function(id) { return IPL_PLAYERS.find(function(p) { return p.id === id; }); }).filter(Boolean)
+    var orderedPlayers = (settings.playerOrder && settings.playerOrder.length > 0)
+      ? settings.playerOrder.map(function(id) { return IPL_PLAYERS.find(function(p) { return p.id === Number(id); }); }).filter(Boolean)
       : IPL_PLAYERS;
     var now = new Date();
     await updateDoc(doc(db, 'rooms', currentRoomCode), {
@@ -644,6 +1029,7 @@ async function startAuctionNow() {
       lastResultAmount: null,
       soldPlayers: []
     });
+    track('auction_started', { room: currentRoomCode });
     myBudget = settings.budget || 100;
     document.getElementById('my-budget').textContent = '₹' + myBudget + ' Cr';
     document.getElementById('auction-room-code').textContent = currentRoomCode;
@@ -668,8 +1054,8 @@ async function handleTimerEnd() {
     var settings = data.settings || {};
     var idx = data.currentPlayerIndex || 0;
     var soldPlayers = data.soldPlayers || [];
-    var orderedPlayers = settings.playerOrder
-      ? settings.playerOrder.map(function(id) { return IPL_PLAYERS.find(function(p) { return p.id === id; }); }).filter(Boolean)
+    var orderedPlayers = (settings.playerOrder && settings.playerOrder.length > 0)
+      ? settings.playerOrder.map(function(id) { return IPL_PLAYERS.find(function(p) { return p.id === Number(id); }); }).filter(Boolean)
       : IPL_PLAYERS;
     var player = orderedPlayers[idx];
     if (!player) return;
@@ -677,7 +1063,6 @@ async function handleTimerEnd() {
     var updatePayload = {};
 
     if (data.currentBidder) {
-      // SOLD
       soldPlayers.push({
         playerName: player.name,
         playerRole: player.role,
@@ -686,13 +1071,11 @@ async function handleTimerEnd() {
         soldToId: data.currentBidder,
         soldFor: data.currentBid || player.basePrice
       });
-      // Write result to Firestore so ALL users see the animation
       updatePayload.lastResult = 'sold';
       updatePayload.lastResultPlayer = player.name;
       updatePayload.lastResultBuyer = data.currentBidderEmail;
       updatePayload.lastResultAmount = data.currentBid || player.basePrice;
     } else {
-      // UNSOLD
       updatePayload.lastResult = 'unsold';
       updatePayload.lastResultPlayer = player.name;
       updatePayload.lastResultBuyer = null;
@@ -702,6 +1085,7 @@ async function handleTimerEnd() {
     var nextIndex = idx + 1;
     if (nextIndex >= orderedPlayers.length) {
       updatePayload.status = 'finished';
+      track('auction_completed', { room: currentRoomCode, players_sold: soldPlayers.length });
       updatePayload.soldPlayers = soldPlayers;
       await updateDoc(roomRef, updatePayload);
       setTimeout(function() { showResults(currentRoomCode); }, 2500);
@@ -714,7 +1098,7 @@ async function handleTimerEnd() {
     updatePayload.currentBidder = null;
     updatePayload.currentBidderEmail = 'No bids yet';
     updatePayload.soldPlayers = soldPlayers;
-    updatePayload.timerStartedAt = now.getTime() + 2500; // delay so animation plays first
+    updatePayload.timerStartedAt = now.getTime() + 2500;
     updatePayload.timerDuration = settings.timer || 30;
 
     await updateDoc(roomRef, updatePayload);
@@ -727,10 +1111,8 @@ async function handleTimerEnd() {
 // SOLD/UNSOLD ANIMATIONS
 // ============================================
 function showSoldAnimation(playerName, buyerName, amount) {
-  // Remove any existing overlay first
   var existing = document.getElementById('result-overlay');
   if (existing) existing.remove();
-
   var overlay = document.createElement('div');
   overlay.id = 'result-overlay';
   overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:fadeIn 0.3s ease;';
@@ -745,7 +1127,6 @@ function showSoldAnimation(playerName, buyerName, amount) {
 function showUnsoldAnimation(playerName) {
   var existing = document.getElementById('result-overlay');
   if (existing) existing.remove();
-
   var overlay = document.createElement('div');
   overlay.id = 'result-overlay';
   overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:fadeIn 0.3s ease;';
@@ -757,19 +1138,36 @@ function showUnsoldAnimation(playerName) {
 }
 
 // ============================================
+// UPDATE BUDGET BAR
+// ============================================
+function updateBudgetBar(remaining, total) {
+  var fill = document.getElementById('auc-budget-fill');
+  var amount = document.getElementById('auc-budget-val');
+  if (!fill || !amount) return;
+  var pct = Math.max(0, (remaining / total) * 100);
+  fill.style.width = pct + '%';
+  amount.textContent = '₹' + remaining + ' Cr';
+  if (pct < 30) fill.style.background = '#dc3545';
+  else if (pct < 60) fill.style.background = '#ffc107';
+  else fill.style.background = 'linear-gradient(135deg,#e94560,#c0392b)';
+}
+
+// ============================================
 // LISTEN TO AUCTION
 // ============================================
 var lastPlayerIndex = -1;
-// BUG 2 FIX: track lastBidder to reset timer on new bid
 var lastBidder = null;
-// BUG 3 FIX: track lastResult to avoid showing animation multiple times
 var lastResultKey = null;
 
 function listenToAuction(roomCode) {
   var roomRef = doc(db, 'rooms', roomCode);
-  onSnapshot(roomRef, function(snapshot) {
+  onSnapshot(roomRef, async function(snapshot) {
     if (!snapshot.exists()) return;
     var data = snapshot.data();
+
+    if (data.status === 'auction' && IPL_PLAYERS.length === 0) {
+      await loadPlayersForEvent(data.eventId || 'ipl2026');
+    }
 
     if (data.status === 'finished') { showResults(roomCode); return; }
     if (data.status !== 'auction') return;
@@ -779,13 +1177,12 @@ function listenToAuction(roomCode) {
 
     var idx = data.currentPlayerIndex || 0;
     var settings = data.settings || {};
-    var orderedPlayers = settings.playerOrder
-      ? settings.playerOrder.map(function(id) { return IPL_PLAYERS.find(function(p) { return p.id === id; }); }).filter(Boolean)
+    var orderedPlayers = (settings.playerOrder && settings.playerOrder.length > 0)
+      ? settings.playerOrder.map(function(id) { return IPL_PLAYERS.find(function(p) { return p.id === Number(id); }); }).filter(Boolean)
       : IPL_PLAYERS;
 
     var player = orderedPlayers[idx];
 
-    // Apply budget from settings
     if (settings.budget) {
       var soldPlayers = data.soldPlayers || [];
       var user = auth.currentUser;
@@ -814,25 +1211,20 @@ function listenToAuction(roomCode) {
       var basePriceEl = document.getElementById('base-price');
       if (basePriceEl) basePriceEl.innerHTML = '₹' + player.basePrice + ' Cr';
     }
-    // Update player counter
+
     var counterEl = document.getElementById('current-player-num');
     var totalEl = document.getElementById('total-player-num');
     if (counterEl) counterEl.textContent = idx + 1;
     if (totalEl) totalEl.textContent = orderedPlayers.length;
 
-    // Update bid display
     var bid = data.currentBid || 0;
     document.getElementById('current-bid-amount').textContent = '₹' + bid + ' Cr';
     document.getElementById('current-bidder').textContent = data.currentBidderEmail || 'No bids yet';
 
-    // Update sold list
     if (data.soldPlayers) updateSoldList(data.soldPlayers);
-
-    // Update players info panel
+    updateBidButtons(data);
     updatePlayersInfoPanel(data);
 
-    // ---- BUG 3 FIX: Show SOLD/UNSOLD animation for ALL users ----
-    // Use idx + lastResult as a unique key to prevent re-showing
     var resultKey = (data.lastResult || '') + '_' + idx + '_' + (data.lastResultPlayer || '');
     if (data.lastResult && resultKey !== lastResultKey) {
       lastResultKey = resultKey;
@@ -843,12 +1235,10 @@ function listenToAuction(roomCode) {
       }
     }
 
-    // ---- Timer logic ----
     var timerDuration = settings.timer || 30;
     currentTimerDuration = timerDuration;
 
     var playerChanged = idx !== lastPlayerIndex;
-    // BUG 2 FIX: also reset timer when bidder changes
     var bidderChanged = data.currentBidder !== lastBidder;
 
     if (playerChanged || bidderChanged) {
@@ -944,7 +1334,6 @@ function startTimer(seconds, totalSeconds) {
   var timerBarFill = document.getElementById('auc-timer-bar-fill');
   var timerBarAmount = document.getElementById('auc-timer-bar-val');
 
-
   function updateTimerUI() {
     if (timerEl) {
       timerEl.textContent = timeLeft;
@@ -971,7 +1360,6 @@ function startTimer(seconds, totalSeconds) {
       timerInterval = null;
       if (timerEl) timerEl.textContent = '0';
       if (timerBarFill) timerBarFill.style.width = '0%';
-      // Auto sold/unsold — only host triggers
       if (isHost) handleTimerEnd();
       return;
     }
@@ -982,16 +1370,137 @@ function startTimer(seconds, totalSeconds) {
 // ============================================
 // UPDATE BUDGET BAR
 // ============================================
-function updateBudgetBar(remaining, total) {
-  var fill = document.getElementById('auc-budget-fill');
-  var amount = document.getElementById('auc-budget-val');
-  if (!fill || !amount) return;
-  var pct = Math.max(0, (remaining / total) * 100);
-  fill.style.width = pct + '%';
-  amount.textContent = '₹' + remaining + ' Cr';
-  if (pct < 30) fill.style.background = '#dc3545';
-  else if (pct < 60) fill.style.background = '#ffc107';
-  else fill.style.background = 'linear-gradient(135deg,#e94560,#c0392b)';
+// ============================================
+// SQUAD COMPOSITION RULES
+// ============================================
+function getCompositionRules(squadSize) {
+  var rules = {
+    11: { Batsman:{min:3,max:4}, Bowler:{min:2,max:4}, 'All-rounder':{min:1,max:3}, Wicketkeeper:{min:1,max:1} },
+    16: { Batsman:{min:4,max:6}, Bowler:{min:3,max:5}, 'All-rounder':{min:2,max:4}, Wicketkeeper:{min:1,max:2} },
+    20: { Batsman:{min:5,max:8}, Bowler:{min:4,max:6}, 'All-rounder':{min:3,max:5}, Wicketkeeper:{min:1,max:2} },
+    25: { Batsman:{min:6,max:10}, Bowler:{min:5,max:8}, 'All-rounder':{min:4,max:6}, Wicketkeeper:{min:2,max:3} }
+  };
+  return rules[squadSize] || rules[16];
+}
+
+function getMyRoleCounts(soldPlayers, userId) {
+  var counts = { Batsman:0, Bowler:0, 'All-rounder':0, Wicketkeeper:0 };
+  soldPlayers.filter(function(p) { return p.soldToId === userId; }).forEach(function(p) {
+    if (counts[p.playerRole] !== undefined) counts[p.playerRole]++;
+  });
+  return counts;
+}
+
+// Returns { allowed: bool, reason: string, warning: string }
+function checkBidAllowed(playerRole, roleCounts, squadSize, currentTotal, settings) {
+  var rules = getCompositionRules(squadSize);
+  var roleRule = rules[playerRole];
+  if (!roleRule) return { allowed: true, reason: null, warning: null };
+
+  // Check 1: max limit for this role
+  if (roleCounts[playerRole] >= roleRule.max) {
+    return {
+      allowed: false,
+      reason: 'You already have the maximum ' + roleRule.max + ' ' + playerRole + (roleRule.max > 1 ? 's' : '') + ' allowed.',
+      warning: null
+    };
+  }
+
+  // Check 2: spot reservation — after buying this player, can we still fill minimums of other roles?
+  var spotsLeft = squadSize - currentTotal - 1; // -1 for buying this player
+  var unfilledOtherRoles = [];
+  var spotsNeeded = 0;
+
+  Object.keys(rules).forEach(function(role) {
+    if (role === playerRole) return;
+    var stillNeeded = Math.max(0, rules[role].min - roleCounts[role]);
+    if (stillNeeded > 0) {
+      spotsNeeded += stillNeeded;
+      unfilledOtherRoles.push(stillNeeded + ' ' + role + (stillNeeded > 1 ? (role === 'All-rounder' ? 's' : 's') : ''));
+    }
+  });
+
+  if (spotsLeft < spotsNeeded) {
+    return {
+      allowed: false,
+      reason: 'Must reserve remaining spots for: ' + unfilledOtherRoles.join(', ') + '.',
+      warning: null
+    };
+  }
+
+  // Check 3: soft warning — spots are tight
+  if (spotsLeft <= spotsNeeded + 1 && spotsNeeded > 0) {
+    return {
+      allowed: true,
+      reason: null,
+      warning: 'Tight on spots — still need: ' + unfilledOtherRoles.join(', ') + '.'
+    };
+  }
+
+  return { allowed: true, reason: null, warning: null };
+}
+
+function updateBidButtons(data) {
+  var user = auth.currentUser;
+  if (!user) return;
+
+  var settings = data.settings || {};
+  var squadSize = settings.squadSize || 16;
+  var soldPlayers = data.soldPlayers || [];
+  var idx = data.currentPlayerIndex || 0;
+  var orderedPlayers = (settings.playerOrder && settings.playerOrder.length > 0)
+    ? settings.playerOrder.map(function(id) { return IPL_PLAYERS.find(function(p) { return p.id === Number(id); }); }).filter(Boolean)
+    : IPL_PLAYERS;
+
+  var player = orderedPlayers[idx];
+  if (!player) return;
+
+  var myPlayers = soldPlayers.filter(function(p) { return p.soldToId === user.uid; });
+  var currentTotal = myPlayers.length;
+  var roleCounts = getMyRoleCounts(soldPlayers, user.uid);
+
+  // Check if squad is already full
+  var infoBox = document.getElementById('bid-composition-info');
+  var bidBtns = [
+    document.getElementById('btn-bid-5'),
+    document.getElementById('btn-bid-10'),
+    document.getElementById('btn-bid-20')
+  ];
+
+  if (currentTotal >= squadSize) {
+    showBidInfo('Your squad is full (' + squadSize + '/' + squadSize + ' players).', 'block');
+    bidBtns.forEach(function(btn) { btn.disabled = true; btn.style.opacity = '0.4'; });
+    return;
+  }
+
+  var result = checkBidAllowed(player.role, roleCounts, squadSize, currentTotal, settings);
+
+  if (!result.allowed) {
+    showBidInfo(result.reason, 'block');
+    bidBtns.forEach(function(btn) { btn.disabled = true; btn.style.opacity = '0.4'; });
+  } else if (result.warning) {
+    showBidInfo(result.warning, 'warning');
+    bidBtns.forEach(function(btn) { btn.disabled = false; btn.style.opacity = '1'; });
+  } else {
+    hideBidInfo();
+    bidBtns.forEach(function(btn) { btn.disabled = false; btn.style.opacity = '1'; });
+  }
+}
+
+function showBidInfo(message, type) {
+  var box = document.getElementById('bid-composition-info');
+  if (!box) return;
+  box.textContent = message;
+  box.className = 'bid-composition-info ' + type;
+  box.style.display = 'block';
+}
+
+function hideBidInfo() {
+  var box = document.getElementById('bid-composition-info');
+  if (!box) return;
+  box.style.display = 'none';
+  box.className = 'bid-composition-info';
+  box.textContent = '';
 }
 
 // ============================================
@@ -1016,8 +1525,9 @@ async function placeBid(amount) {
       currentBid: newBid,
       currentBidder: user.uid,
       currentBidderEmail: displayName,
-      timerStartedAt: now.getTime(),  // BUG 2 FIX: reset timer on bid
+      timerStartedAt: now.getTime(),
     });
+    track('bid_placed', { amount: newBid, increment: amount });
   } catch (error) {
     console.error('Bid error:', error);
   }
@@ -1167,12 +1677,9 @@ document.getElementById('btn-view-season').addEventListener('click', function() 
 document.getElementById('btn-share-result').addEventListener('click', function() {
   var shareText = 'My AuctionX Team!\n\n';
   myTeamPlayers.forEach(function(p) { shareText += p.playerName + ' - ₹' + p.soldFor + ' Cr\n'; });
-  shareText += '\nTotal Spent: ₹' + budgetSpent + ' Cr\nPlay at: https://YOUR-USERNAME.github.io/ipl-auction-game';
+  shareText += '\nTotal Spent: ₹' + budgetSpent + ' Cr\nPlay at: https://YOUR-USERNAME.github.io/auctionx';
   navigator.clipboard.writeText(shareText).then(function() { alert('Team copied to clipboard!'); });
 });
 document.getElementById('btn-new-auction').addEventListener('click', function() {
   if (confirm('Start a new auction?')) showScreen('screen-lobby');
 });
-
-
-// hello

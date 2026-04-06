@@ -64,7 +64,6 @@ body::after {
 body.auction-active #spotlight-canvas {
   opacity: 0.2;
 }
-
 /* ==============================
    SCREEN SYSTEM
 ============================== */
@@ -493,7 +492,7 @@ hr { border:none; border-top:1px solid var(--border2); margin:20px 0; }
 /* ==============================
    DASHBOARD
 ============================== */
-#screen-lobby { justify-content:flex-start; align-items:flex-start; overflow-y:auto; }
+#screen-lobby { justify-content:flex-start; align-items:flex-start; overflow-y:auto; overflow-x:hidden; scroll-padding-top:100px; }
 
 .dashboard-content {
   width:100%; max-width:960px;
@@ -1567,8 +1566,7 @@ hr { border:none; border-top:1px solid var(--border2); margin:20px 0; }
 
 /* ===========================
    PLAYERS PANEL DROPDOWN
-============================== */
-
+=============================*/
 .auc-player-row-header {
   padding: 12px;
   cursor: pointer;
@@ -1657,4 +1655,374 @@ hr { border:none; border-top:1px solid var(--border2); margin:20px 0; }
   color: var(--text3);
   font-style: italic;
   text-align: center;
+}
+/* ==============================
+   VERIFY EMAIL SCREEN
+===============================*/
+#screen-verify {
+  padding: 20px;
+}
+
+#screen-verify .login-card {
+  padding: 24px 28px 20px;
+  max-width: 400px;
+}
+
+#screen-verify .login-card .btn-primary {
+  padding: 13px 20px;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+#screen-verify .login-card .btn-secondary {
+  padding: 13px 20px;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+#screen-verify .login-logo {
+  margin-bottom: 8px;
+}
+
+#screen-verify .login-logo-icon {
+  width: 48px; height: 48px;
+  margin-bottom: 8px;
+}
+
+#screen-verify .login-logo h1 { font-size: 1.4rem; }
+#screen-verify .login-logo p { font-size: 0.63rem; }
+
+.verify-icon-box {
+  width: 58px; height: 58px;
+  background: rgba(233,69,96,0.08);
+  border: 1px solid rgba(233,69,96,0.2);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--red);
+  margin: 0 auto 10px;
+  flex-shrink: 0;
+}
+
+.verify-icon-box svg { width: 28px; height: 28px; }
+
+.verify-email-chip {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 5px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  font-family: var(--font-b); font-size: 0.83rem;
+  color: var(--text2);
+  margin: 0 auto 12px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.verify-email-chip svg { color: var(--red); flex-shrink: 0; }
+
+.verify-desc {
+  color: var(--text2);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.verify-status {
+  display: none;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  text-align: center;
+  margin-bottom: 8px;
+  font-family: var(--font-b);
+}
+
+.verify-status.success {
+  display: block;
+  background: rgba(40,167,69,0.1);
+  border: 1px solid rgba(40,167,69,0.3);
+  color: #28a745;
+}
+
+.verify-status.error {
+  display: block;
+  background: rgba(233,69,96,0.1);
+  border: 1px solid rgba(233,69,96,0.3);
+  color: var(--red2);
+}
+
+.verify-divider {
+  height: 1px;
+  background: var(--border2);
+  margin: 4px 0 6px;
+  width: 100%;
+}
+
+.verify-switch-btn {
+  width: 100%;
+  padding: 8px 20px;
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  font-family: var(--font-d);
+  font-size: 0.78rem;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  transition: color var(--ease);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.verify-switch-btn:hover { color: var(--red); }
+
+.auth-error-box {
+  display: none;
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  text-align: center;
+  margin-bottom: 10px;
+  font-family: var(--font-b);
+  background: rgba(233,69,96,0.1);
+  border: 1px solid rgba(233,69,96,0.3);
+  color: var(--red2);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ==============================
+   LOGIN SCREEN COMPACT
+===============================*/
+#screen-login .login-card {
+  padding: 28px 32px 24px;
+}
+
+#screen-login .login-logo {
+  margin-bottom: 20px;
+}
+
+#screen-login .login-logo-icon {
+  width: 56px; height: 56px;
+  margin-bottom: 10px;
+}
+
+#screen-login .login-logo h1 { font-size: 1.8rem; }
+#screen-login .login-logo p { font-size: 0.65rem; }
+
+#screen-login .input-group {
+  margin-bottom: 10px;
+}
+
+#screen-login .login-card .btn-primary {
+  padding: 13px 20px;
+  margin-bottom: 6px;
+}
+
+#screen-login .login-card .btn-secondary {
+  padding: 13px 20px;
+  margin-bottom: 6px;
+}
+
+#screen-login .auth-divider {
+  margin: 8px 0;
+}
+
+/* ==============================
+   OTP SCREEN
+===============================*/
+#screen-otp .login-card {
+  padding: 24px 28px 20px;
+  max-width: 420px;
+}
+
+#screen-otp .login-logo { margin-bottom: 8px; }
+#screen-otp .login-logo-icon { width: 48px; height: 48px; margin-bottom: 8px; }
+#screen-otp .login-logo h1 { font-size: 1.4rem; }
+#screen-otp .login-logo p { font-size: 0.63rem; }
+
+#screen-otp .login-card .btn-primary {
+  padding: 13px 20px;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+#screen-otp .login-card .btn-secondary {
+  padding: 13px 20px;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+.otp-input-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.otp-input {
+  width: 46px;
+  height: 54px;
+  text-align: center;
+  font-family: var(--font-d);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--bg-input);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  outline: none;
+  transition: all var(--ease);
+  padding: 0;
+  margin: 0;
+  caret-color: var(--red);
+}
+
+.otp-input:focus {
+  border-color: var(--red);
+  background: rgba(233,69,96,0.06);
+  box-shadow: 0 0 0 3px rgba(233,69,96,0.12);
+}
+
+.otp-input.filled {
+  border-color: rgba(233,69,96,0.4);
+  background: rgba(233,69,96,0.05);
+}
+
+/* ==============================
+   USERNAME SCREEN Button Fix
+===============================*/
+#screen-username .login-card .btn-primary {
+  padding: 13px 20px;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+/* ==============================
+   PUBLIC ROOMS
+===============================*/
+.public-room-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  transition: all var(--ease);
+  gap: 12px;
+}
+
+.public-room-card:hover {
+  border-color: var(--border);
+  background: rgba(233,69,96,0.04);
+  transform: translateY(-1px);
+}
+
+.public-room-left { display: flex; flex-direction: column; gap: 4px; }
+
+.public-room-code {
+  font-family: var(--font-d);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--red);
+  letter-spacing: 3px;
+}
+
+.public-room-meta {
+  font-size: 0.75rem;
+  color: var(--text3);
+  letter-spacing: 0.5px;
+}
+
+.public-room-meta span { color: var(--text2); }
+
+.public-room-right { display: flex; align-items: center; gap: 10px; }
+
+.public-room-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-d);
+  font-size: 0.82rem;
+  color: var(--text2);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.public-room-count.full { color: var(--text3); }
+
+.public-room-join-btn {
+  padding: 7px 18px;
+  background: rgba(233,69,96,0.1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--red);
+  font-family: var(--font-d);
+  font-size: 0.78rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all var(--ease);
+  white-space: nowrap;
+}
+
+.public-room-join-btn:hover:not([disabled]) {
+  background: var(--red);
+  color: white;
+  box-shadow: 0 4px 15px rgba(233,69,96,0.4);
+}
+
+.public-room-join-btn[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: var(--text3);
+  border-color: var(--border2);
+  background: transparent;
+}
+
+/* Verification banner offset for dashboard content */
+#verify-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  background: rgba(233,69,96,0.08);
+  border: 1px solid rgba(233,69,96,0.25);
+  border-radius: 16px;
+  margin-bottom: 20px;
+}
+
+body.unverified .dashboard-content {
+  padding-top: 78px;
+}
+
+/* ==============================
+   BID COMPOSITION INFO BOX
+===============================*/
+.bid-composition-info {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-family: var(--font-b);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  letter-spacing: 0.3px;
+  display: none;
+}
+
+.bid-composition-info.block {
+  display: block;
+  background: rgba(233,69,96,0.08);
+  border: 1px solid rgba(233,69,96,0.3);
+  color: var(--red2);
+}
+
+.bid-composition-info.warning {
+  display: block;
+  background: rgba(255,193,7,0.08);
+  border: 1px solid rgba(255,193,7,0.3);
+  color: #ffc107;
 }
