@@ -62,7 +62,7 @@ body::after {
 }
 
 body.auction-active #spotlight-canvas {
-  opacity: 0.2;
+  opacity: 0.25;
 }
 /* ==============================
    SCREEN SYSTEM
@@ -1104,6 +1104,8 @@ hr { border:none; border-top:1px solid var(--border2); margin:20px 0; }
   color:rgba(233,69,96,0.5); margin-bottom:20px;
   animation:playerFloat 4s ease-in-out infinite;
   position:relative; z-index:1;
+  overflow:hidden;
+  transition: background 0.4s ease, border-color 0.4s ease;
 }
 
 @keyframes playerFloat {
@@ -1901,7 +1903,6 @@ hr { border:none; border-top:1px solid var(--border2); margin:20px 0; }
 
 /* ==============================
    PUBLIC ROOMS
-===============================*/
 .public-room-card {
   display: flex;
   align-items: center;
@@ -2001,7 +2002,6 @@ body.unverified .dashboard-content {
 
 /* ==============================
    BID COMPOSITION INFO BOX
-===============================*/
 .bid-composition-info {
   width: 100%;
   padding: 10px 14px;

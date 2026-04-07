@@ -1210,8 +1210,8 @@ function listenToAuction(roomCode) {
       document.getElementById('player-team').textContent = player.team;
       var basePriceEl = document.getElementById('base-price');
       if (basePriceEl) basePriceEl.innerHTML = '₹' + player.basePrice + ' Cr';
+      updatePlayerAvatar(player);
     }
-
     var counterEl = document.getElementById('current-player-num');
     var totalEl = document.getElementById('total-player-num');
     if (counterEl) counterEl.textContent = idx + 1;
