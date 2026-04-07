@@ -5,6 +5,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { PLAYER_PHOTOS } from './data/player-photos.js';
+
 // ============================================
 // GLOBAL VARIABLES
 // ============================================
@@ -286,15 +288,15 @@ let IPL_PLAYERS = [];
 
 async function loadPlayersForEvent(eventId) {
   if (eventId === 'ipl2026') {
-    if (IPL_PLAYERS.length > 0) return; // already loaded, skip
+    if (IPL_PLAYERS.length > 0) return;
     const module = await import('./data/ipl2026.js');
     IPL_PLAYERS = module.IPL_PLAYERS;
   }
-  // future sports:
-  // else if (eventId === 'fifa2026') {
-  //   const module = await import('./data/fifa2026.js');
-  //   IPL_PLAYERS = module.IPL_PLAYERS;
-  // }
+  // Attach photo URLs from global registry to each player
+  // This works for any sport — photo lookup is by player name
+  IPL_PLAYERS = IPL_PLAYERS.map(function(p) {
+    return Object.assign({}, p, { photo: PLAYER_PHOTOS[p.name] || null });
+  });
 }
 
 // ============================================
@@ -1149,7 +1151,7 @@ function updateBudgetBar(remaining, total) {
 }
 
 // ============================================
-// PLAYER AVATAR — live URL photo or colored initials
+// UPDATE PLAYER AVATAR 
 // ============================================
 function updatePlayerAvatar(player) {
   var avatarEl = document.getElementById('player-avatar-container');
@@ -1172,10 +1174,10 @@ function updatePlayerAvatar(player) {
     img.alt = player.name;
     img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
     img.onerror = function() {
-      // URL failed (network issue etc) — fall back to initials
+      // URL broken — fall back to colored initials
       avatarEl.innerHTML = '<span style="font-family:var(--font-d);font-size:2.8rem;font-weight:700;color:' + rc.color + ';">' + initials + '</span>';
     };
-    img.src = player.photo; // live URL — Wikipedia thumbnail
+    img.src = player.photo;
     avatarEl.innerHTML = '';
     avatarEl.appendChild(img);
   } else {
