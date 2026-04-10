@@ -7,6 +7,8 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, si
 import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { PLAYER_PHOTOS } from './data/player-photos.js';
 
+const MAILER_URL = 'https://auctionx-mailer.shaan-patel02.workers.dev';
+
 // ============================================
 // GLOBAL VARIABLES
 // ============================================
@@ -30,8 +32,14 @@ let currentBidAmount = 0;
 // ============================================
 // FIREBASE CONFIG
 // ============================================
-const _fcfg = await fetch(CONFIG_URL).then(r => r.json());
-const app = initializeApp(_fcfg);
+const app = initializeApp({
+  apiKey: "AIzaSyAABN4U5N4mxXwkiIBLRsprpv563mR_wd8",
+  authDomain: "ipl-auction-game-eae92.firebaseapp.com",
+  projectId: "ipl-auction-game-eae92",
+  storageBucket: "ipl-auction-game-eae92.firebasestorage.app",
+  messagingSenderId: "525729954460",
+  appId: "1:525729954460:web:0fbb3ff950a0deddc20b59"
+});
 const auth = getAuth(app);
 const db = getFirestore(app);
 const analytics = getAnalytics(app);
@@ -42,9 +50,6 @@ const analytics = getAnalytics(app);
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
-
-const MAILER_URL = 'https://auctionx-mailer.shaan-patel02.workers.dev';
-const CONFIG_URL = 'https://auctionx-config.shaan-patel02.workers.dev';
 
 async function sendOTPEmail(toEmail, otp) {
   var response = await fetch(MAILER_URL, {
