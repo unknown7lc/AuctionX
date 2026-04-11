@@ -45,6 +45,124 @@ const db = getFirestore(app);
 const analytics = getAnalytics(app);
 
 // ============================================
+// EVENT CONFIG
+// ============================================
+const EVENT_CONFIG = {
+  ipl2026: {
+    name: 'IPL 2026',
+    sport: 'cricket',
+    currency: '₹',
+    unit: 'Cr',
+    accentColor: '#e94560',
+    accentGrad: 'linear-gradient(135deg, #e94560, #c0392b)',
+    soldText: 'SOLD',
+    unsoldText: 'UNSOLD',
+    soldColor: '#28a745',
+    unsoldColor: '#dc3545',
+    squadLabel: 'SQUAD',
+    budgetLabel: 'BUDGET',
+    basePriceLabel: 'BASE PRICE',
+    managerLabel: 'ROOM PLAYERS',
+    transferLabel: 'BID',
+    roles: ['Batsman', 'Bowler', 'All-rounder', 'Wicketkeeper'],
+    roleColors: {
+      'Batsman':      { bg: 'rgba(52,152,219,0.15)',  border: 'rgba(52,152,219,0.5)',  color: '#5dade2' },
+      'Bowler':       { bg: 'rgba(231,76,60,0.15)',   border: 'rgba(231,76,60,0.5)',   color: '#e74c3c' },
+      'All-rounder':  { bg: 'rgba(46,204,113,0.15)',  border: 'rgba(46,204,113,0.5)',  color: '#2ecc71' },
+      'Wicketkeeper': { bg: 'rgba(241,196,15,0.15)',  border: 'rgba(241,196,15,0.5)',  color: '#f1c40f' }
+    },
+    compositionRules: {
+      11: { Batsman:{min:3,max:4}, Bowler:{min:2,max:4}, 'All-rounder':{min:1,max:3}, Wicketkeeper:{min:1,max:1} },
+      16: { Batsman:{min:4,max:6}, Bowler:{min:3,max:5}, 'All-rounder':{min:2,max:4}, Wicketkeeper:{min:1,max:2} },
+      20: { Batsman:{min:5,max:8}, Bowler:{min:4,max:6}, 'All-rounder':{min:3,max:5}, Wicketkeeper:{min:1,max:2} },
+      25: { Batsman:{min:6,max:10}, Bowler:{min:5,max:8}, 'All-rounder':{min:4,max:6}, Wicketkeeper:{min:2,max:3} }
+    },
+    incrementTiers: [
+      { upTo: 1,   steps: [0.05, 0.10, 0.20] },
+      { upTo: 2,   steps: [0.10, 0.25, 0.50] },
+      { upTo: 5,   steps: [0.25, 0.50, 1.00] },
+      { upTo: 15,  steps: [0.50, 1.00, 2.00] },
+      { upTo: 30,  steps: [1.00, 2.00, 5.00] },
+      { upTo: Infinity, steps: [2.00, 5.00, 10.00] }
+    ],
+  },
+  fifa2026: {
+    name: 'FIFA World Cup 2026',
+    sport: 'football',
+    currency: '€',
+    unit: 'M',
+    accentColor: '#e94560',
+    accentGrad: 'linear-gradient(135deg, #e94560, #c0392b)',
+    soldText: 'SIGNED',
+    unsoldText: 'RELEASED',
+    soldColor: '#28a745',
+    unsoldColor: '#dc3545',
+    squadLabel: 'CLUB',
+    budgetLabel: 'TRANSFER BUDGET',
+    basePriceLabel: 'TRANSFER VALUE',
+    managerLabel: 'MANAGERS',
+    transferLabel: 'BID',
+    roles: ['Goalkeeper', 'Defender', 'Midfielder', 'Forward'],
+    roleColors: {
+      'Goalkeeper': { bg: 'rgba(241,196,15,0.15)',  border: 'rgba(241,196,15,0.5)',  color: '#f1c40f' },
+      'Defender':   { bg: 'rgba(52,152,219,0.15)',  border: 'rgba(52,152,219,0.5)',  color: '#5dade2' },
+      'Midfielder': { bg: 'rgba(46,204,113,0.15)',  border: 'rgba(46,204,113,0.5)',  color: '#2ecc71' },
+      'Forward':    { bg: 'rgba(231,76,60,0.15)',   border: 'rgba(231,76,60,0.5)',   color: '#e74c3c' }
+    },
+    compositionRules: {
+      11: { Goalkeeper:{min:1,max:1}, Defender:{min:3,max:4}, Midfielder:{min:3,max:4}, Forward:{min:2,max:3} },
+      16: { Goalkeeper:{min:1,max:2}, Defender:{min:4,max:5}, Midfielder:{min:4,max:6}, Forward:{min:3,max:5} },
+      20: { Goalkeeper:{min:2,max:2}, Defender:{min:5,max:6}, Midfielder:{min:5,max:7}, Forward:{min:4,max:6} },
+      25: { Goalkeeper:{min:2,max:3}, Defender:{min:6,max:8}, Midfielder:{min:6,max:9}, Forward:{min:5,max:8} }
+    },
+    incrementTiers: [
+      { upTo: 10,  steps: [0.5,  1,   2]  },
+      { upTo: 30,  steps: [1,    2,   5]  },
+      { upTo: 60,  steps: [2,    5,   10] },
+      { upTo: 100, steps: [5,    10,  20] },
+      { upTo: Infinity, steps: [10, 20, 50] }
+    ],
+  }
+};
+
+let currentEventId = 'ipl2026';
+
+function applyEventTheme(eventId) {
+  currentEventId = eventId;
+  var cfg = EVENT_CONFIG[eventId];
+  if (!cfg) return;
+  var tickerLabel = document.getElementById('auc-ticker-label');
+  if (tickerLabel) tickerLabel.textContent = cfg.soldText;
+
+  // Update auction screen labels
+  var budgetLabel = document.querySelector('.auc-budget-label');
+  if (budgetLabel) budgetLabel.textContent = cfg.budgetLabel;
+
+  var panelTitle = document.querySelector('.auc-panel-title');
+  if (panelTitle) panelTitle.textContent = cfg.managerLabel;
+
+  var statBoxes = document.querySelectorAll('.auc-stat-box-label');
+  if (cfg.sport === 'football') {
+    var footballStats = ['CAPS', 'GOALS', 'ASSISTS'];
+    statBoxes.forEach(function(box, i) {
+      box.textContent = footballStats[i] || box.textContent;
+    });
+  } else {
+    var cricketStats = ['MATCHES', 'RUNS', 'WICKETS'];
+    statBoxes.forEach(function(box, i) {
+      box.textContent = cricketStats[i] || box.textContent;
+    });
+  }
+}
+
+function hexToRgb(hex) {
+  var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? parseInt(result[1],16) + ',' + parseInt(result[2],16) + ',' + parseInt(result[3],16)
+    : '233,69,96';
+}
+
+// ============================================
 // OTP HELPERS
 // ============================================
 function generateOTP() {
@@ -256,18 +374,26 @@ function track(eventName, params = {}) {
 // PLAYER DATA — loaded dynamically per event
 // ============================================
 let IPL_PLAYERS = [];
+let FIFA_PLAYERS = [];
 
 async function loadPlayersForEvent(eventId) {
   if (eventId === 'ipl2026') {
     if (IPL_PLAYERS.length > 0) return;
     const module = await import('./data/ipl2026.js?v=1');
     IPL_PLAYERS = module.IPL_PLAYERS;
+    IPL_PLAYERS = IPL_PLAYERS.map(function(p) {
+      return Object.assign({}, p, { photo: PLAYER_PHOTOS[p.name] || null });
+    });
+  } else if (eventId === 'fifa2026') {
+    if (FIFA_PLAYERS.length > 0) return;
+    const module = await import('./data/fifa2026.js?v=1');
+    FIFA_PLAYERS = module.FIFA_PLAYERS;
   }
-  // Attach photo URLs from global registry to each player
-  // This works for any sport — photo lookup is by player name
-  IPL_PLAYERS = IPL_PLAYERS.map(function(p) {
-    return Object.assign({}, p, { photo: PLAYER_PHOTOS[p.name] || null });
-  });
+}
+
+function getPlayersForEvent(eventId) {
+  if (eventId === 'fifa2026') return FIFA_PLAYERS;
+  return IPL_PLAYERS;
 }
 
 // ============================================
@@ -540,9 +666,41 @@ function loadUserStats(user) {
 function loadActiveEvents() {
   var eventsList = document.getElementById('events-list');
   if (!eventsList) return;
-  eventsList.innerHTML =
-    '<div class="event-card"><div class="event-dot event-dot-live"></div><div class="event-info"><div class="event-name">IPL 2026</div><div class="event-meta">Cricket · 74 matches · Mar - Jun 2026</div></div><div style="text-align:right"><div class="event-status event-status-live">LIVE</div><div class="event-rooms">Rooms available</div></div></div>' +
-    '<div class="event-card"><div class="event-dot event-dot-soon"></div><div class="event-info"><div class="event-name">T20 World Cup 2026</div><div class="event-meta">Cricket · Jun 2026</div></div><div style="text-align:right"><div class="event-status event-status-soon">COMING SOON</div></div></div>';
+  eventsList.innerHTML = '';
+
+  var events = [
+    {
+      id: 'ipl2026',
+      name: 'IPL 2026',
+      meta: 'Cricket · 74 matches · Mar - Jun 2026',
+      status: 'live'
+    },
+    {
+      id: 'fifa2026',
+      name: 'FIFA World Cup 2026',
+      meta: 'Football · 104 matches · Jun - Jul 2026',
+      status: 'soon'
+    }
+  ];
+
+  events.forEach(function(event) {
+    var isLive = event.status === 'live';
+    var div = document.createElement('div');
+    div.className = 'event-card';
+    div.innerHTML =
+      '<div class="event-dot ' + (isLive ? 'event-dot-live' : 'event-dot-soon') + '"></div>' +
+      '<div class="event-info">' +
+        '<div class="event-name">' + event.name + '</div>' +
+        '<div class="event-meta">' + event.meta + '</div>' +
+      '</div>' +
+      '<div style="text-align:right">' +
+        '<div class="event-status ' + (isLive ? 'event-status-live' : 'event-status-soon') + '">' +
+          (isLive ? 'LIVE' : 'COMING SOON') +
+        '</div>' +
+        (isLive ? '<div class="event-rooms">Rooms available</div>' : '') +
+      '</div>';
+    eventsList.appendChild(div);
+  });
 }
 
 function loadGlobalLeaderboard(user) {
@@ -625,6 +783,20 @@ document.getElementById('btn-type-public').addEventListener('click', function() 
 });
 
 // ============================================
+// EVENT SELECTOR
+// ============================================
+var selectedEventId = '';
+
+document.getElementById('event-select').addEventListener('change', function() {
+  selectedEventId = this.value;
+  if (selectedEventId === 'fifa2026') {
+    document.getElementById('room-type-note').textContent = 'Build your dream World Cup squad.';
+  } else {
+    document.getElementById('room-type-note').textContent = 'Private rooms are for friends only. Points are not tracked.';
+  }
+});
+
+// ============================================
 // GENERATE ROOM CODE
 // ============================================
 function generateRoomCode() {
@@ -654,6 +826,10 @@ async function requiresVerification(roomType) {
 document.getElementById('btn-create-room').addEventListener('click', async function() {
   var user = auth.currentUser;
   if (!user) return;
+  if (!selectedEventId) {
+    alert('Please select an event first.');
+    return;
+  }
 
   // Block unverified users from creating public rooms
   if (!await requiresVerification(selectedRoomType)) return;
@@ -661,6 +837,7 @@ document.getElementById('btn-create-room').addEventListener('click', async funct
   var roomCode = generateRoomCode();
   currentRoomCode = roomCode;
   isHost = true;
+  currentEventId = selectedEventId;
   try {
     await setDoc(doc(db, 'rooms', roomCode), {
       code: roomCode,
@@ -668,7 +845,7 @@ document.getElementById('btn-create-room').addEventListener('click', async funct
       hostId: user.uid,
       status: 'waiting',
       type: selectedRoomType,
-      eventId: 'ipl2026',
+      eventId: selectedEventId,
       maxPlayers: maxPlayers,
       createdAt: new Date(),
       players: { [user.uid]: { email: user.email, joinedAt: new Date() } }
@@ -716,6 +893,7 @@ document.getElementById('btn-join-room').addEventListener('click', async functio
     track('room_joined', { type: roomData.type });
     currentRoomCode = code;
     isHost = false;
+    currentEventId = roomData.eventId || 'ipl2026';
     document.getElementById('room-code-display').textContent = code;
     showScreen('screen-room');
     listenToRoom(code);
@@ -827,6 +1005,7 @@ document.getElementById('btn-start-auction').addEventListener('click', async fun
       startAuctionNow();
       return;
     }
+    updateSetupScreenForEvent(currentEventId);
     showScreen('screen-setup');
   } catch(error) {
     alert('Error: ' + error.message);
@@ -889,6 +1068,65 @@ function initSetupButtons() {
 }
 initSetupButtons();
 
+function updateSetupScreenForEvent(eventId) {
+  var cfg = EVENT_CONFIG[eventId];
+  if (!cfg) return;
+
+  // Update budget buttons
+  var budgetBtns = document.querySelectorAll('.budget-btn');
+  if (cfg.sport === 'football') {
+    var footballBudgets = [100, 200, 300, 500];
+    budgetBtns.forEach(function(btn, i) {
+      btn.dataset.value = footballBudgets[i];
+      btn.textContent = cfg.currency + footballBudgets[i] + cfg.unit;
+    });
+    setupBudget = 100;
+    document.getElementById('budget-display').textContent = cfg.currency + '100' + cfg.unit;
+    document.getElementById('custom-budget').placeholder = 'Custom amount in ' + cfg.unit;
+  } else {
+    var cricketBudgets = [50, 75, 100, 125];
+    budgetBtns.forEach(function(btn, i) {
+      btn.dataset.value = cricketBudgets[i];
+      btn.textContent = cfg.currency + cricketBudgets[i] + ' ' + cfg.unit;
+    });
+    setupBudget = 50;
+    document.getElementById('budget-display').textContent = cfg.currency + '50 ' + cfg.unit;
+    document.getElementById('custom-budget').placeholder = 'Custom amount in ' + cfg.unit;
+  }
+
+  // Update player order options
+  var orderBtns = document.querySelectorAll('.order-btn');
+  if (cfg.sport === 'football') {
+    var footballOrders = [
+      { value: 'random',  label: 'Random — like real transfer window' },
+      { value: 'byTeam',  label: 'By Nation' },
+      { value: 'byRole',  label: 'By Position — Forwards first' },
+      { value: 'byPrice', label: 'By Value — Expensive first' }
+    ];
+    orderBtns.forEach(function(btn, i) {
+      btn.dataset.value = footballOrders[i].value;
+      btn.textContent = footballOrders[i].label;
+    });
+    document.getElementById('order-display').textContent = 'Random';
+  } else {
+    var cricketOrders = [
+      { value: 'random',  label: 'Random — like real auction' },
+      { value: 'byTeam',  label: 'By IPL Team' },
+      { value: 'byRole',  label: 'By Role — Batsmen first' },
+      { value: 'byPrice', label: 'By Price — Expensive first' }
+    ];
+    orderBtns.forEach(function(btn, i) {
+      btn.dataset.value = cricketOrders[i].value;
+      btn.textContent = cricketOrders[i].label;
+    });
+    document.getElementById('order-display').textContent = 'Random';
+  }
+
+  // Update setup screen heading
+  var setupDesc = document.querySelector('.setup-header p');
+  if (setupDesc) setupDesc.textContent = cfg.sport === 'football' ? 'CONFIGURE YOUR TRANSFER WINDOW' : 'CONFIGURE YOUR AUCTION';
+}
+
 // ============================================
 // BACK TO ROOM FROM SETUP
 // ============================================
@@ -903,7 +1141,7 @@ document.getElementById('btn-back-lobby').addEventListener('click', function() {
 document.getElementById('btn-confirm-start').addEventListener('click', async function() {
   if (!currentRoomCode) return;
   try {
-    await loadPlayersForEvent('ipl2026');
+    await loadPlayersForEvent(currentEventId);
     var orderedPlayers = getOrderedPlayers(setupOrder);
     await updateDoc(doc(db, 'rooms', currentRoomCode), {
       settings: {
@@ -959,7 +1197,8 @@ function showSettingsSavedBadge() {
 // ORDER PLAYERS
 // ============================================
 function getOrderedPlayers(order) {
-  var players = IPL_PLAYERS.slice();
+  var cfg = EVENT_CONFIG[currentEventId];
+  var players = getPlayersForEvent(currentEventId).slice();
   if (order === 'random') {
     for (var i = players.length - 1; i > 0; i--) {
       var j = Math.floor(Math.random() * (i + 1));
@@ -968,8 +1207,10 @@ function getOrderedPlayers(order) {
   } else if (order === 'byTeam') {
     players.sort(function(a, b) { return a.team.localeCompare(b.team); });
   } else if (order === 'byRole') {
-    var roleOrder = { 'Batsman': 1, 'Wicketkeeper': 2, 'All-rounder': 3, 'Bowler': 4 };
-    players.sort(function(a, b) { return (roleOrder[a.role] || 5) - (roleOrder[b.role] || 5); });
+      var roleOrder = cfg.sport === 'football'
+        ? { 'Forward': 1, 'Midfielder': 2, 'Defender': 3, 'Goalkeeper': 4 }
+        : { 'Batsman': 1, 'Wicketkeeper': 2, 'All-rounder': 3, 'Bowler': 4 };
+      players.sort(function(a, b) { return (roleOrder[a.role] || 5) - (roleOrder[b.role] || 5); });
   } else if (order === 'byPrice') {
     players.sort(function(a, b) { return b.basePrice - a.basePrice; });
   }
@@ -980,15 +1221,15 @@ function getOrderedPlayers(order) {
 // START AUCTION NOW
 // ============================================
 async function startAuctionNow() {
-  await loadPlayersForEvent('ipl2026');
+  await loadPlayersForEvent(currentEventId);
   if (!currentRoomCode) return;
   try {
     var roomSnap = await getDoc(doc(db, 'rooms', currentRoomCode));
     var data = roomSnap.data();
     var settings = data.settings || {};
     var orderedPlayers = (settings.playerOrder && settings.playerOrder.length > 0)
-      ? settings.playerOrder.map(function(id) { return IPL_PLAYERS.find(function(p) { return p.id === Number(id); }); }).filter(Boolean)
-      : IPL_PLAYERS;
+      ? settings.playerOrder.map(function(id) { return getPlayersForEvent(currentEventId).find(function(p) { return p.id === Number(id); }); }).filter(Boolean)
+      : getPlayersForEvent(currentEventId);
     var now = new Date();
     await updateDoc(doc(db, 'rooms', currentRoomCode), {
       status: 'auction',
@@ -1005,7 +1246,8 @@ async function startAuctionNow() {
     });
     track('auction_started', { room: currentRoomCode });
     myBudget = settings.budget || 100;
-    document.getElementById('my-budget').textContent = '₹' + myBudget + ' Cr';
+    var cfg = EVENT_CONFIG[currentEventId];
+    document.getElementById('my-budget').textContent = cfg.currency + myBudget + ' ' + cfg.unit;
     document.getElementById('auction-room-code').textContent = currentRoomCode;
     showScreen('screen-auction');
     listenToAuction(currentRoomCode);
@@ -1029,7 +1271,7 @@ async function handleTimerEnd() {
     var idx = data.currentPlayerIndex || 0;
     var soldPlayers = data.soldPlayers || [];
     var orderedPlayers = (settings.playerOrder && settings.playerOrder.length > 0)
-      ? settings.playerOrder.map(function(id) { return IPL_PLAYERS.find(function(p) { return p.id === Number(id); }); }).filter(Boolean)
+      ? settings.playerOrder.map(function(id) { return getPlayersForEvent(data.eventId || 'ipl2026').find(function(p) { return p.id === Number(id); }); }).filter(Boolean)
       : IPL_PLAYERS;
     var player = orderedPlayers[idx];
     if (!player) return;
@@ -1085,15 +1327,16 @@ async function handleTimerEnd() {
 // SOLD/UNSOLD ANIMATIONS
 // ============================================
 function showSoldAnimation(playerName, buyerName, amount) {
+  var cfg = EVENT_CONFIG[currentEventId];
   var existing = document.getElementById('result-overlay');
   if (existing) existing.remove();
   var overlay = document.createElement('div');
   overlay.id = 'result-overlay';
   overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:fadeIn 0.3s ease;';
   overlay.innerHTML =
-    '<div style="font-family:var(--font-d);font-size:5rem;font-weight:700;color:#28a745;letter-spacing:4px;margin-bottom:16px;">SOLD!</div>' +
+    '<div style="font-family:var(--font-d);font-size:5rem;font-weight:700;color:' + cfg.soldColor + ';letter-spacing:4px;margin-bottom:16px;">' + cfg.soldText + '!</div>' +
     '<div style="font-family:var(--font-d);font-size:2rem;color:#fff;margin-bottom:8px;">' + playerName + '</div>' +
-    '<div style="font-size:1.2rem;color:#e94560;font-family:var(--font-d);margin-bottom:24px;">₹' + amount + ' Cr → ' + buyerName + '</div>' +
+    '<div style="font-size:1.2rem;color:var(--red);font-family:var(--font-d);margin-bottom:24px;">' + cfg.currency + amount + cfg.unit + ' → ' + buyerName + '</div>' +
     '<div class="ax-ad-slot ax-ad-slot-b" id="ad-slot-b">' +
       '<div class="ax-ad-placeholder ax-ad-placeholder-overlay">' +
         '<span class="ax-ad-label">ADVERTISEMENT</span>' +
@@ -1104,13 +1347,14 @@ function showSoldAnimation(playerName, buyerName, amount) {
 }
 
 function showUnsoldAnimation(playerName) {
+  var cfg = EVENT_CONFIG[currentEventId];
   var existing = document.getElementById('result-overlay');
   if (existing) existing.remove();
   var overlay = document.createElement('div');
   overlay.id = 'result-overlay';
   overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:fadeIn 0.3s ease;';
   overlay.innerHTML =
-    '<div style="font-family:var(--font-d);font-size:5rem;font-weight:700;color:#dc3545;letter-spacing:4px;margin-bottom:16px;">UNSOLD</div>' +
+    '<div style="font-family:var(--font-d);font-size:5rem;font-weight:700;color:' + cfg.unsoldColor + ';letter-spacing:4px;margin-bottom:16px;">' + cfg.unsoldText + '</div>' +
     '<div style="font-family:var(--font-d);font-size:2rem;color:#fff;margin-bottom:24px;">' + playerName + '</div>' +
     '<div class="ax-ad-slot ax-ad-slot-b" id="ad-slot-b">' +
       '<div class="ax-ad-placeholder ax-ad-placeholder-overlay">' +
@@ -1128,39 +1372,30 @@ function updateBudgetBar(remaining, total) {
   var fill = document.getElementById('auc-budget-fill');
   var amount = document.getElementById('auc-budget-val');
   if (!fill || !amount) return;
+  var cfg = EVENT_CONFIG[currentEventId];
   var pct = Math.max(0, (remaining / total) * 100);
   fill.style.width = pct + '%';
-  amount.textContent = '₹' + remaining + ' Cr';
-  if (pct < 30) fill.style.background = '#dc3545';
-  else if (pct < 60) fill.style.background = '#ffc107';
-  else fill.style.background = 'linear-gradient(135deg,#e94560,#c0392b)';
+  amount.textContent = cfg.currency + remaining + ' ' + cfg.unit;
 }
-
 // ============================================
 // UPDATE PLAYER AVATAR 
 // ============================================
 function updatePlayerAvatar(player) {
   var avatarEl = document.getElementById('player-avatar-container');
   if (!avatarEl) return;
- 
-  var roleColors = {
-    'Batsman':      { bg: 'rgba(52,152,219,0.15)',  border: 'rgba(52,152,219,0.5)',  color: '#5dade2' },
-    'Bowler':       { bg: 'rgba(231,76,60,0.15)',   border: 'rgba(231,76,60,0.5)',   color: '#e74c3c' },
-    'All-rounder':  { bg: 'rgba(46,204,113,0.15)',  border: 'rgba(46,204,113,0.5)',  color: '#2ecc71' },
-    'Wicketkeeper': { bg: 'rgba(241,196,15,0.15)',  border: 'rgba(241,196,15,0.5)',  color: '#f1c40f' }
-  };
-  var rc = roleColors[player.role] || roleColors['Batsman'];
+  var cfg = EVENT_CONFIG[currentEventId];
+  var roleColors = cfg ? cfg.roleColors : EVENT_CONFIG.ipl2026.roleColors;
+  var rc = roleColors[player.role] || { bg: 'rgba(233,69,96,0.15)', border: 'rgba(233,69,96,0.5)', color: 'var(--red)' };
   var initials = player.name.split(' ').map(function(w) { return w[0]; }).slice(0, 2).join('');
- 
+
   avatarEl.style.background = rc.bg;
   avatarEl.style.borderColor = rc.border;
- 
+
   if (player.photo) {
     var img = document.createElement('img');
     img.alt = player.name;
     img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
     img.onerror = function() {
-      // URL broken — fall back to colored initials
       avatarEl.innerHTML = '<span style="font-family:var(--font-d);font-size:2.8rem;font-weight:700;color:' + rc.color + ';">' + initials + '</span>';
     };
     img.src = player.photo;
@@ -1184,9 +1419,11 @@ function listenToAuction(roomCode) {
     if (!snapshot.exists()) return;
     var data = snapshot.data();
 
-    if (data.status === 'auction' && IPL_PLAYERS.length === 0) {
-      await loadPlayersForEvent(data.eventId || 'ipl2026');
+    var eventId = data.eventId || 'ipl2026';
+    if (data.status === 'auction' && getPlayersForEvent(eventId).length === 0) {
+      await loadPlayersForEvent(eventId);
     }
+    applyEventTheme(eventId);
 
     if (data.status === 'finished') { showResults(roomCode); return; }
     if (data.status !== 'auction') return;
@@ -1197,8 +1434,8 @@ function listenToAuction(roomCode) {
     var idx = data.currentPlayerIndex || 0;
     var settings = data.settings || {};
     var orderedPlayers = (settings.playerOrder && settings.playerOrder.length > 0)
-      ? settings.playerOrder.map(function(id) { return IPL_PLAYERS.find(function(p) { return p.id === Number(id); }); }).filter(Boolean)
-      : IPL_PLAYERS;
+      ? settings.playerOrder.map(function(id) { return getPlayersForEvent(eventId).find(function(p) { return p.id === Number(id); }); }).filter(Boolean)
+      : getPlayersForEvent(eventId).find;
 
     var player = orderedPlayers[idx];
 
@@ -1210,7 +1447,8 @@ function listenToAuction(roomCode) {
         var spent = myPlayers.reduce(function(total, p) { return total + p.soldFor; }, 0);
         myBudget = settings.budget - spent;
         myPlayersCount = myPlayers.length;
-        document.getElementById('my-budget').textContent = '₹' + myBudget + ' Cr';
+        var cfg = EVENT_CONFIG[eventId];
+        document.getElementById('my-budget').textContent = cfg.currency + myBudget + ' ' + cfg.unit;
         document.getElementById('my-players-count').textContent = myPlayersCount;
         updateBudgetBar(myBudget, settings.budget);
       }
@@ -1228,7 +1466,7 @@ function listenToAuction(roomCode) {
       if (roleEl) { roleEl.textContent = player.role; roleEl.className = 'role-badge ' + roleClass; }
       document.getElementById('player-team').textContent = player.team;
       var basePriceEl = document.getElementById('base-price');
-      if (basePriceEl) basePriceEl.innerHTML = '₹' + player.basePrice + ' Cr';
+      if (basePriceEl) basePriceEl.innerHTML = cfg.basePriceLabel + ' ' + cfg.currency + player.basePrice + ' ' + cfg.unit;
       updatePlayerAvatar(player);
     }
     var counterEl = document.getElementById('current-player-num');
@@ -1240,7 +1478,7 @@ function listenToAuction(roomCode) {
     var user = auth.currentUser;
     var prevBid = currentBidAmount;
     currentBidAmount = bid;
-    document.getElementById('current-bid-amount').textContent = '₹' + bid + ' Cr';
+    document.getElementById('current-bid-amount').textContent = cfg.currency + bid + ' ' + cfg.unit;
     document.getElementById('current-bidder').textContent = data.currentBidderEmail || 'No bids yet';
 
     // Animate: bid landed (anyone's bid) or outbid (someone else overtook you)
@@ -1295,6 +1533,7 @@ function listenToAuction(roomCode) {
 // UPDATE PLAYERS INFO PANEL
 // ============================================
 function updatePlayersInfoPanel(data) {
+  var cfg = EVENT_CONFIG[currentEventId];
   var panel = document.getElementById('players-info-panel');
   if (!panel) return;
   var players = data.players || {};
@@ -1326,7 +1565,7 @@ function updatePlayersInfoPanel(data) {
           div.innerHTML =
             '<div class="auc-player-row-name">' + (r.isCurrentUser ? 'YOU' : r.username) + '</div>' +
             '<div class="auc-player-row-stats">' +
-              '<span class="auc-player-row-budget">₹' + r.remaining + ' Cr</span>' +
+              '<span class="auc-player-row-budget">' + cfg.currency + r.remaining + ' ' + cfg.unit + '</span>' +
               '<span class="auc-player-row-count">' + r.count + ' players</span>' +
             '</div>' +
             '<div class="auc-player-row-bar-track">' +
@@ -1389,12 +1628,8 @@ function startTimer(seconds, totalSeconds) {
 // SQUAD COMPOSITION RULES
 // ============================================
 function getCompositionRules(squadSize) {
-  var rules = {
-    11: { Batsman:{min:3,max:4}, Bowler:{min:2,max:4}, 'All-rounder':{min:1,max:3}, Wicketkeeper:{min:1,max:1} },
-    16: { Batsman:{min:4,max:6}, Bowler:{min:3,max:5}, 'All-rounder':{min:2,max:4}, Wicketkeeper:{min:1,max:2} },
-    20: { Batsman:{min:5,max:8}, Bowler:{min:4,max:6}, 'All-rounder':{min:3,max:5}, Wicketkeeper:{min:1,max:2} },
-    25: { Batsman:{min:6,max:10}, Bowler:{min:5,max:8}, 'All-rounder':{min:4,max:6}, Wicketkeeper:{min:2,max:3} }
-  };
+  var cfg = EVENT_CONFIG[currentEventId];
+  var rules = cfg ? cfg.compositionRules : EVENT_CONFIG.ipl2026.compositionRules;
   return rules[squadSize] || rules[16];
 }
 
@@ -1464,8 +1699,8 @@ function updateBidButtons(data) {
   var soldPlayers = data.soldPlayers || [];
   var idx = data.currentPlayerIndex || 0;
   var orderedPlayers = (settings.playerOrder && settings.playerOrder.length > 0)
-    ? settings.playerOrder.map(function(id) { return IPL_PLAYERS.find(function(p) { return p.id === Number(id); }); }).filter(Boolean)
-    : IPL_PLAYERS;
+    ? settings.playerOrder.map(function(id) { return getPlayersForEvent(currentEventId).find(function(p) { return p.id === Number(id); }); }).filter(Boolean)
+    : getPlayersForEvent(currentEventId);
 
   var player = orderedPlayers[idx];
   if (!player) return;
@@ -1524,17 +1759,23 @@ function hideBidInfo() {
 // based on the current bid amount
 // ============================================
 function getIncrements(currentBid) {
-  if (currentBid < 1)   return [0.05, 0.10, 0.20];   // 5L, 10L, 20L
-  if (currentBid < 2)   return [0.10, 0.25, 0.50];   // 10L, 25L, 50L
-  if (currentBid < 5)   return [0.25, 0.50, 1.00];   // 25L, 50L, 1Cr
-  if (currentBid < 15)  return [0.50, 1.00, 2.00];   // 50L, 1Cr, 2Cr
-  if (currentBid < 30)  return [1.00, 2.00, 5.00];   // 1Cr, 2Cr, 5Cr
-  return                       [2.00, 5.00, 10.00];  // 2Cr, 5Cr, 10Cr
+  var cfg = EVENT_CONFIG[currentEventId];
+  var tiers = cfg ? cfg.incrementTiers : EVENT_CONFIG.ipl2026.incrementTiers;
+  for (var i = 0; i < tiers.length; i++) {
+    if (currentBid < tiers[i].upTo) return tiers[i].steps;
+  }
+  return tiers[tiers.length - 1].steps;
 }
 
 function formatIncrement(val) {
-  if (val < 1) return '₹' + Math.round(val * 100) + 'L';
-  return '₹' + val + ' Cr';
+  var cfg = EVENT_CONFIG[currentEventId];
+  var unit = cfg ? cfg.unit : 'Cr';
+  var currency = cfg ? cfg.currency : '₹';
+  if (unit === 'Cr') {
+    if (val < 1) return currency + Math.round(val * 100) + 'L';
+    return currency + val + ' Cr';
+  }
+  return currency + val + 'M';
 }
 
 // ============================================
@@ -1657,7 +1898,8 @@ function updateSoldList(soldPlayers) {
   soldPlayers.forEach(function(item, index) {
     var div = document.createElement('div');
     div.className = 'sold-item';
-    div.innerHTML = item.playerName + ' <span class="sold-price">₹' + item.soldFor + ' Cr - ' + item.soldTo + '</span>';
+    var cfg = EVENT_CONFIG[currentEventId];
+    div.innerHTML = item.playerName + ' <span class="sold-price">' + cfg.currency + item.soldFor + cfg.unit + ' - ' + item.soldTo + '</span>';
     soldList.appendChild(div);
     if (index < soldPlayers.length - 1) {
       var sep = document.createElement('div');
